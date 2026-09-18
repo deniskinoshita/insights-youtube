@@ -1,0 +1,25 @@
+# Transcrições e análises (dados locais, não sobem pro repo)
+transcricoes/*.md
+transcricoes/*.txt
+analises/*.md
+analises/*.txt
+
+# Manter as pastas vazias
+!transcricoes/.gitkeep
+!analises/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
