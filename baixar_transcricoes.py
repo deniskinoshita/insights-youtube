@@ -26,6 +26,12 @@ LANGS = "pt-BR,pt,pt-orig,en,en-orig"
 TIMESTAMP = re.compile(r"^\d{2}:\d{2}:\d{2}[.,]\d{3}\s*-->")
 TAGS = re.compile(r"<[^>]+>")
 CUE_SETTINGS = re.compile(r"align:\S+|position:\S+|line:\S+|size:\S+")
+VIDEO_ID = re.compile(r"(?:v=|youtu\.be/|shorts/|embed/|live/)([\w-]{11})")
+
+
+def extrair_video_id(url: str) -> str:
+    m = VIDEO_ID.search(url)
+    return m.group(1) if m else ""
 
 
 def ler_links(caminho: Path) -> list[str]:
@@ -87,9 +93,14 @@ def baixar(url: str, destino: Path) -> None:
             "-o", str(tmp_path / "%(title).120s.%(ext)s"),
             url,
         ]
-        resultado = subprocess.run(cmd, capture_output=True, text=True)
+        try:
+            resultado = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            print(f"  [tempo esgotado] {url}")
+            return
         if resultado.returncode != 0:
-            print(f"  [erro] {url}\n  {resultado.stderr.strip().splitlines()[-1:]}")
+            ultima = (resultado.stderr.strip().splitlines() or ["falha desconhecida"])[-1]
+            print(f"  [erro] {url}\n  {ultima}")
             return
 
         arquivos = sorted(tmp_path.glob("*.vtt"))
@@ -105,6 +116,9 @@ def baixar(url: str, destino: Path) -> None:
             return
 
         nome = re.sub(r"\.[a-zA-Z-]+\.vtt$", "", preferido.name)
+        video_id = extrair_video_id(url)
+        if video_id:
+            nome = f"{nome}-{video_id}"
         alvo = destino / f"{nome}.txt"
         cabecalho = f"# {nome}\nFonte: {url}\n\n"
         alvo.write_text(cabecalho + quebrar_paragrafos(texto), encoding="utf-8")

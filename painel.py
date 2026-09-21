@@ -122,6 +122,7 @@ def baixar_transcricao(url: str) -> dict:
             "duracao": f"{segundos // 60}min" if segundos else "",
             "texto": quebrar_paragrafos(texto),
             "palavras": len(texto.split()),
+            "video_id": info.get("id") or "",
         }
 
 
@@ -165,6 +166,8 @@ def analisar(dados: dict) -> str:
             dado = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"API respondeu {e.code}: {e.read().decode('utf-8')[:300]}")
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Falha de rede ao chamar a API: {e.reason}")
     return "".join(b.get("text", "") for b in dado.get("content", []) if b.get("type") == "text")
 
 
@@ -199,6 +202,8 @@ def ler(item_id: str) -> dict:
 def processar(url: str) -> dict:
     dados = baixar_transcricao(url)
     item_id = slug(dados["titulo"])
+    if dados["video_id"]:
+        item_id = f"{item_id}-{dados['video_id']}"
     TRANSCRICOES.mkdir(exist_ok=True)
     ANALISES.mkdir(exist_ok=True)
 
