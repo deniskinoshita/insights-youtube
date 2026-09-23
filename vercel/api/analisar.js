@@ -130,6 +130,13 @@ function limparColada(texto) {
 }
 
 export default async function handler(req, res) {
+  if (req.method === "GET") {
+    // Diagnóstico: diz só se as chaves existem, nunca o valor delas
+    return res.status(200).json({
+      supadata: Boolean(process.env.SUPADATA_API_KEY),
+      anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+    });
+  }
   if (req.method !== "POST") {
     return res.status(405).json({ erro: "Use POST." });
   }
@@ -150,7 +157,7 @@ export default async function handler(req, res) {
     if (!chave) {
       return res.status(503).json({
         erro: "A busca automática da transcrição ainda não está configurada.",
-        detalhe: "Cole a transcrição do vídeo na caixa abaixo para continuar.",
+        detalhe: "Cole a transcrição do vídeo na caixa que abriu logo acima.",
         precisaColar: true,
       });
     }
@@ -161,7 +168,7 @@ export default async function handler(req, res) {
     } catch (e) {
       return res.status(502).json({
         erro: "Não consegui buscar a transcrição automaticamente: " + e.message,
-        detalhe: "Cole a transcrição do vídeo na caixa abaixo para continuar.",
+        detalhe: "Cole a transcrição do vídeo na caixa que abriu logo acima.",
         precisaColar: true,
       });
     }
