@@ -664,6 +664,19 @@ function specAreas(r) {
   };
 }
 
+const ROTULO_DESTINATARIO = { cliente: 'Para clientes', 'candidato a assessor': 'Para quem quer ser assessor', equipe: 'Para a sua equipe' };
+const ETAPAS_SPIN = [['situacao', 'Situação'], ['problema', 'Problema'], ['implicacao', 'Implicação'], ['necessidade', 'Necessidade de solução']];
+
+// Relatórios antigos tinham uma única mensagem_cliente
+function mensagensDe(r) {
+  if (Array.isArray(r.mensagens) && r.mensagens.length) return r.mensagens;
+  return r.mensagem_cliente ? [{ destinatario: 'cliente', objetivo: '', texto: r.mensagem_cliente }] : [];
+}
+
+function temSpin(r) {
+  return r.perguntas_spin && ETAPAS_SPIN.some(([k]) => (r.perguntas_spin[k] || []).length);
+}
+
 function contagemChecagem(itens) {
   const c = { confirmada: 0, parcial: 0, divergente: 0, nao_encontrada: 0 };
   (itens || []).forEach(i => { c[i.status] = (c[i.status] || 0) + 1; });
@@ -760,12 +773,19 @@ function renderizar() {
     <div class="grafico alto"><canvas id="g-areas" role="img" aria-label="Relevância por área da assessoria"></canvas></div>
     <ul class="areas-lista">${areasBoas.filter(a => a.relevancia >= 3).map(a => `<li><b>${esc(a.area)} (${a.relevancia}/5):</b> ${esc(a.como_usar)}</li>`).join('') || '<li>Nenhuma área com relevância alta.</li>'}</ul>
 
-    <h2>Mensagem para os clientes</h2>
-    <div class="mensagem" id="mensagem">${esc(r.mensagem_cliente)}</div>
-    <div class="acoes" style="align-items:center">
-      <button class="btn-sec" id="btnCopiarMsg" onclick="copiarMensagem()">Copiar mensagem</button>
-      <span class="nota">Troque o [nome] e ajuste com o seu jeito antes de enviar.</span>
-    </div>
+    <h2>Mensagens para enviar</h2>
+    ${r.publico_do_video ? `<p class="nota">Público do vídeo: ${esc(r.publico_do_video)}. Mensagens montadas no roteiro SPIN (situação, problema, implicação, necessidade).</p>` : ''}
+    ${mensagensDe(r).map((msg, i) => `
+      <h3 style="font-size:0.9rem;margin-top:14px">${esc(ROTULO_DESTINATARIO[msg.destinatario] || msg.destinatario)}</h3>
+      ${msg.objetivo ? `<p class="nota">${esc(msg.objetivo)}</p>` : ''}
+      <div class="mensagem">${esc(msg.texto)}</div>
+      <div class="acoes" style="align-items:center">
+        <button class="btn-sec" id="btnCopiarMsg-${i}" onclick="copiarMensagem(${i})">Copiar mensagem</button>
+        <span class="nota">Troque o [nome] e ajuste com o seu jeito antes de enviar.</span>
+      </div>`).join('')}
+
+    ${temSpin(r) ? `<h2>Perguntas SPIN para a conversa</h2>
+      ${ETAPAS_SPIN.filter(([k]) => (r.perguntas_spin[k] || []).length).map(([k, nome]) => `<p><strong>${nome}</strong></p><ul>${r.perguntas_spin[k].map(q => `<li>${esc(q)}</li>`).join('')}</ul>`).join('')}` : ''}
 
     ${r.ganchos.length ? `<h2>Ganchos de conteúdo</h2><ul>${r.ganchos.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
     ${r.frases_citaveis.length ? `<h2>Frases citáveis</h2>${r.frases_citaveis.map(f => `<blockquote>${esc(f.texto)}</blockquote>`).join('')}` : ''}
@@ -887,7 +907,13 @@ function textoDoRelatorio() {
     r.afirmacoes_para_checar.forEach(a => l.push('- (não checada) ' + a.afirmacao));
   }
   l.push('', '## Onde usar na assessoria', ...[...r.areas].sort((a, b) => b.relevancia - a.relevancia).map(a => `- ${a.area} (${a.relevancia}/5): ${a.como_usar}`), '');
-  l.push('## Mensagem para os clientes', r.mensagem_cliente, '');
+  l.push('## Mensagens para enviar');
+  mensagensDe(r).forEach(msg => l.push('### ' + (ROTULO_DESTINATARIO[msg.destinatario] || msg.destinatario), msg.texto, ''));
+  if (temSpin(r)) {
+    l.push('## Perguntas SPIN para a conversa');
+    ETAPAS_SPIN.forEach(([k, nome]) => (r.perguntas_spin[k] || []).length && l.push('### ' + nome, ...r.perguntas_spin[k].map(q => '- ' + q)));
+    l.push('');
+  }
   if (r.ganchos.length) l.push('## Ganchos de conteúdo', ...r.ganchos.map(x => '- ' + x), '');
   if (r.frases_citaveis.length) l.push('## Frases citáveis', ...r.frases_citaveis.map(f => '> ' + f.texto), '');
   if (r.variacao) l.push('## ' + r.variacao.titulo, ...r.variacao.itens.map(x => '- ' + x), '');
@@ -903,7 +929,7 @@ function copiarPara(btn, texto, rotulo) {
 }
 
 function copiar() { copiarPara(document.getElementById('btnCopiar'), textoDoRelatorio(), 'Copiar texto'); }
-function copiarMensagem() { copiarPara(document.getElementById('btnCopiarMsg'), atual.relatorio.mensagem_cliente, 'Copiar mensagem'); }
+function copiarMensagem(i) { copiarPara(document.getElementById('btnCopiarMsg-' + i), mensagensDe(atual.relatorio)[i].texto, 'Copiar mensagem'); }
 
 /* ---------- PDF ---------- */
 
@@ -964,7 +990,12 @@ function blocosRelatorio() {
     `<img class="grafico-img" width="674" height="300" src="${graficoComoImagem(specAreas(r), 674, 300)}">`,
     `<ul>${areas.filter(a => a.relevancia >= 3).map(a => `<li><b>${esc(a.area)} (${a.relevancia}/5):</b> ${esc(a.como_usar)}</li>`).join('') || '<li>Nenhuma área com relevância alta.</li>'}</ul>`,
   ]);
-  b.push(`<h2>Mensagem para os clientes</h2><div class="msg">${esc(r.mensagem_cliente)}</div><p class="sub">Troque o [nome] e ajuste com o seu jeito antes de enviar.</p>`);
+  secao('Mensagens para enviar', mensagensDe(r).map(msg =>
+    `<p><b>${esc(ROTULO_DESTINATARIO[msg.destinatario] || msg.destinatario)}</b>${msg.objetivo ? ` <span class="sub">· ${esc(msg.objetivo)}</span>` : ''}</p><div class="msg">${esc(msg.texto)}</div><p class="sub">Troque o [nome] e ajuste com o seu jeito antes de enviar.</p>`));
+  if (temSpin(r)) {
+    secao('Perguntas SPIN para a conversa', ETAPAS_SPIN.filter(([k]) => (r.perguntas_spin[k] || []).length)
+      .map(([k, nome]) => `<p><b>${nome}</b></p><ul>${r.perguntas_spin[k].map(q => `<li>${esc(q)}</li>`).join('')}</ul>`));
+  }
   if (r.ganchos.length) b.push(`<h2>Ganchos de conteúdo</h2><ul>${r.ganchos.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
   if (r.frases_citaveis.length) b.push(`<h2>Frases citáveis</h2>${r.frases_citaveis.map(f => `<p><i>“${esc(f.texto)}”</i></p>`).join('')}`);
   if (r.variacao) b.push(`<h2>${esc(r.variacao.titulo)}</h2><ul>${r.variacao.itens.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
@@ -1064,7 +1095,14 @@ function slidesApresentacao() {
   }
   const areas = [...r.areas].sort((a, b) => b.relevancia - a.relevancia);
   s.push(`<div class="rotulo">Onde usar na assessoria</div><h2>As áreas que mais aproveitam</h2><div class="duas"><img src="${graficoComoImagem(specAreas(r), 560, 420, 1.2)}"><ul>${areas.slice(0, 3).map(a => `<li style="font-size:22px"><b>${esc(a.area)}:</b> ${esc(a.como_usar)}</li>`).join('')}</ul></div>`);
-  s.push(`<div class="rotulo">Mensagem para os clientes</div><h2>Para mandar no WhatsApp</h2><div class="msg">${esc(r.mensagem_cliente)}</div>`);
+  mensagensDe(r).forEach(msg => {
+    s.push(`<div class="rotulo">Mensagem · ${esc(ROTULO_DESTINATARIO[msg.destinatario] || msg.destinatario)}</div><h2>Para mandar no WhatsApp</h2><div class="msg">${esc(msg.texto)}</div>${msg.objetivo ? `<p style="margin-top:20px;font-size:20px;color:#5b6475">Objetivo: ${esc(msg.objetivo)}</p>` : ''}`);
+  });
+  if (temSpin(r)) {
+    const blocos = ETAPAS_SPIN.filter(([k]) => (r.perguntas_spin[k] || []).length)
+      .map(([k, nome]) => `<div><p style="font-size:22px;font-weight:700;color:#2a5bd7;margin-bottom:6px">${nome}</p><ul>${r.perguntas_spin[k].slice(0, 2).map(q => `<li style="font-size:23px;margin-bottom:10px">${esc(q)}</li>`).join('')}</ul></div>`).join('');
+    s.push(`<div class="rotulo">Perguntas SPIN</div><h2>Para conduzir a conversa</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 40px">${blocos}</div>`);
+  }
   if (r.ganchos.length) s.push(`<div class="rotulo">Ganchos de conteúdo</div><h2>Ideias para post e palestra</h2><ul>${r.ganchos.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
   return s;
 }

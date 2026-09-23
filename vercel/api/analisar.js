@@ -37,7 +37,7 @@ Preencha cada campo assim:
 - ficha: título, canal e duração quando vierem no cabeçalho, senão "não informado";
   tema em uma frase; público para quem o vídeo parece ter sido feito.
 - resumo_executivo: de 3 a 5 frases curtas com o que mais importa, para quem só vai
-  ler isso. Comece pelo que muda a vida do cliente.
+  ler isso. Comece pelo que muda a vida de quem o vídeo quer atingir.
 - tese_central: uma frase só, o que o autor defende, não o assunto.
 - pontos_principais: de 5 a 8, em ordem de importância.
 - frases_citaveis: no máximo 3, literais, só as que funcionariam em slide ou post.
@@ -55,14 +55,33 @@ Preencha cada campo assim:
   confirmar antes de repetir para um cliente (números, regras, estudos, promessas de
   rentabilidade, dados de mercado). Escreva cada uma de forma que dê para pesquisar.
 - ganchos: até 3 ideias de post ou de abertura de palestra, uma linha cada.
-- mensagem_cliente: um texto curto (40 a 90 palavras) para o assessor mandar no
-  WhatsApp para os clientes, puxando conversa sobre o tema do vídeo. Escreva como
-  gente, na primeira pessoa, do jeito que um assessor que conhece o cliente escreveria:
-  frases curtas, tom de conversa, sem jargão, sem travessão, sem lista, sem hashtag,
-  no máximo um emoji. Nada de "não é só X, é Y", nada de "no cenário atual", nada de
-  "descubra", nada de "vamos juntos". Termine com uma pergunta simples que faça o
-  cliente responder. Não prometa rentabilidade nem cite produto específico.
-  Deixe "[nome]" onde entra o nome do cliente.
+- publico_do_video: para quem o vídeo foi feito, escolhendo um da lista.
+- mensagens: de 1 a 3 mensagens curtas para WhatsApp, cada uma para um destinatário
+  diferente (cliente, candidato a assessor, equipe). A primeira é para o destinatário
+  que mais combina com o público do vídeo. Só escreva para "cliente" se o tema
+  realmente interessa a quem investe; um vídeo sobre carreira de assessor, por
+  exemplo, vira mensagem para candidato a assessor e para a equipe, não para cliente.
+  Cada mensagem segue o SPIN Selling (Neil Rackham), nesta ordem e sem dizer os nomes
+  das etapas:
+    Situação: uma frase leve sobre o momento da pessoa, de preferência uma pergunta
+    curta ou uma observação do tipo "lembrei de você por causa de...".
+    Problema: o incômodo que o vídeo toca, dito do jeito que a pessoa sentiria.
+    Implicação: numa frase, o custo de deixar isso como está (tempo, dinheiro,
+    oportunidade, tranquilidade).
+    Necessidade de solução: feche com uma pergunta aberta que faça a própria pessoa
+    dizer o valor de resolver, e deixe o próximo passo fácil (conversa de 20 minutos,
+    café, ligação).
+  Escreva como gente, na primeira pessoa, do jeito que um assessor que conhece a
+  pessoa escreveria: 50 a 90 palavras, frases curtas, tom de conversa, sem jargão,
+  sem travessão, sem lista, sem hashtag, no máximo um emoji. Nada de "não é só X, é
+  Y", "no cenário atual", "descubra", "vamos juntos", "fez sentido?". Não afirme
+  número, empresa, programa ou regra do vídeo como fato (eles ainda não foram
+  checados); fale da ideia, não do dado. Não prometa rentabilidade nem cite produto.
+  Deixe "[nome]" onde entra o nome da pessoa. Em objetivo, diga em uma frase o que a
+  mensagem quer provocar.
+- perguntas_spin: perguntas para usar na conversa que a mensagem principal abrir,
+  2 ou 3 por etapa (situacao, problema, implicacao, necessidade), no tom de quem
+  pergunta de verdade, sem cara de roteiro.
 - variacao: preencha só quando a instrução extra abaixo pedir; senão null.`;
 
 const VARIACOES = {
@@ -121,7 +140,24 @@ const ESQUEMA = objeto({
     items: objeto({ afirmacao: texto, por_que_checar: texto }),
   },
   ganchos: listaDeTexto,
-  mensagem_cliente: texto,
+  publico_do_video: {
+    type: "string",
+    enum: ["investidores", "futuros assessores", "assessores e equipes", "empresários", "público geral"],
+  },
+  mensagens: {
+    type: "array",
+    items: objeto({
+      destinatario: { type: "string", enum: ["cliente", "candidato a assessor", "equipe"] },
+      objetivo: texto,
+      texto,
+    }),
+  },
+  perguntas_spin: objeto({
+    situacao: listaDeTexto,
+    problema: listaDeTexto,
+    implicacao: listaDeTexto,
+    necessidade: listaDeTexto,
+  }),
   variacao: { anyOf: [objeto({ titulo: texto, itens: listaDeTexto }), { type: "null" }] },
 });
 
