@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insights YouTube | Braúna</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #242836;
+  --border: #2e3348;
+  --text: #e8eaf0;
+  --text2: #9ca3b8;
+  --accent: #6c8cff;
+  --accent2: #4a6adf;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+header {
+  text-align: center;
+  padding: 32px 0 24px;
+}
+header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+header h1 span { color: var(--accent); }
+header p {
+  color: var(--text2);
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.input-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-row input:focus { border-color: var(--accent); }
+.input-row input::placeholder { color: var(--text2); }
+.variacao-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.variacao-row label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: var(--text2);
+  cursor: pointer;
+  padding: 6px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  transition: all 0.2s;
+}
+.variacao-row label:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(108, 140, 255, 0.1);
+}
+.variacao-row input { display: none; }
+button.primary {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+button.primary:hover { background: var(--accent2); }
+button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.link {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+button.link:hover { color: var(--accent); }
+
+.colar { display: none; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+.colar.ativo { display: block; }
+.colar h3 { font-size: 0.95rem; margin-bottom: 8px; }
+.colar ol {
+  color: var(--text2);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+.colar textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  margin-bottom: 12px;
+}
+.colar textarea:focus { border-color: var(--accent); }
+
+.status {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+.status.loading {
+  display: flex;
+  background: rgba(108, 140, 255, 0.1);
+  border: 1px solid rgba(108, 140, 255, 0.2);
+  color: var(--accent);
+}
+.status.erro {
+  display: block;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  color: var(--danger);
+}
+.status.aviso {
+  display: block;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  color: var(--warn);
+}
+.status small { display: block; opacity: 0.8; margin-top: 4px; }
+.spinner {
+  width: 18px; height: 18px;
+  flex: none;
+  border: 2px solid rgba(108,140,255,0.3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.resultado {
+  display: none;
+}
+.resultado.ativo { display: block; }
+
+.resultado-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.resultado-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.meta {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-bottom: 16px;
+}
+.btn-copiar {
+  padding: 8px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text2);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-copiar:hover { border-color: var(--accent); color: var(--accent); }
+.btn-copiar.copiado { border-color: var(--success); color: var(--success); }
+
+.md-body {
+  line-height: 1.75;
+  font-size: 0.92rem;
+}
+.md-body h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-top: 28px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+}
+.md-body h2:first-child { margin-top: 0; }
+.md-body p { margin-bottom: 10px; }
+.md-body ul, .md-body ol {
+  margin-bottom: 10px;
+  padding-left: 24px;
+}
+.md-body li { margin-bottom: 6px; }
+.md-body strong { color: #fff; }
+.md-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 10px 16px;
+  margin: 12px 0;
+  background: rgba(108, 140, 255, 0.05);
+  border-radius: 0 8px 8px 0;
+  color: var(--text2);
+  font-style: italic;
+}
+.md-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+.md-body code {
+  background: var(--surface2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.historico { margin-top: 32px; }
+.historico h3 {
+  font-size: 0.95rem;
+  color: var(--text2);
+  margin-bottom: 12px;
+}
+.historico-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.historico-item:hover { border-color: var(--accent); }
+.historico-item .titulo {
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.historico-item .data {
+  font-size: 0.78rem;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .input-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Insights <span>YouTube</span></h1>
+    <p>Cole o link, receba o relatório padrão Braúna</p>
+  </header>
+
+  <div class="card">
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+      <button class="primary" id="btnAnalisar" onclick="analisar()">Analisar</button>
+    </div>
+    <div class="variacao-row">
+      <label><input type="radio" name="variacao" value="" checked> Padrão</label>
+      <label><input type="radio" name="variacao" value="palestrante"> Estudo de palestrante</label>
+      <label><input type="radio" name="variacao" value="concorrente"> Análise de concorrente</label>
+      <label><input type="radio" name="variacao" value="aula"> Aula técnica</label>
+    </div>
+    <button class="link" id="btnAbrirColar" onclick="abrirColar()">Já tenho a transcrição, quero colar</button>
+
+    <div class="colar" id="colar">
+      <h3>Colar a transcrição</h3>
+      <ol>
+        <li>Abra o vídeo no YouTube.</li>
+        <li>Na descrição, clique em <strong>…mais</strong> e depois em <strong>Mostrar transcrição</strong>.</li>
+        <li>Selecione todo o texto da transcrição, copie e cole aqui.</li>
+      </ol>
+      <textarea id="transcricaoInput" placeholder="Cole aqui a transcrição do vídeo. As marcações de tempo são removidas automaticamente."></textarea>
+      <button class="primary" id="btnAnalisarColada" onclick="analisar(true)">Analisar transcrição colada</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="resultado card" id="resultado">
+    <div class="resultado-header">
+      <h2>Relatório</h2>
+      <button class="btn-copiar" id="btnCopiar" onclick="copiar()">Copiar Markdown</button>
+    </div>
+    <div class="meta" id="meta"></div>
+    <div class="md-body" id="conteudo"></div>
+  </div>
+
+  <div class="historico" id="historico"></div>
+</div>
+
+<script>
+let markdownBruto = '';
+let historico = [];
+try { historico = JSON.parse(localStorage.getItem('yt-historico') || '[]'); } catch(e) {}
+
+function escaparHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderizarMd(md) {
+  let html = escaparHtml(md)
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+
+  // Agrupar <li> consecutivos em <ul>
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  // Parágrafos
+  html = html.split('\n\n').map(b => {
+    b = b.trim();
+    if (!b) return '';
+    if (/^<[hublor]/.test(b)) return b;
+    return '<p>' + b + '</p>';
+  }).join('\n');
+  return html;
+}
+
+function mostrarStatus(tipo, msg, detalhe) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + tipo;
+  el.innerHTML = tipo === 'loading'
+    ? '<div class="spinner"></div><span>' + escaparHtml(msg) + '</span>'
+    : escaparHtml(msg) + (detalhe ? '<small>' + escaparHtml(detalhe) + '</small>' : '');
+}
+
+function esconderStatus() {
+  document.getElementById('status').className = 'status';
+}
+
+function abrirColar() {
+  document.getElementById('colar').classList.add('ativo');
+  document.getElementById('btnAbrirColar').hidden = true;
+  document.getElementById('transcricaoInput').focus();
+}
+
+function mostrarRelatorio(md, meta) {
+  markdownBruto = md;
+  document.getElementById('conteudo').innerHTML = renderizarMd(md);
+  document.getElementById('meta').textContent = meta
+    ? [meta.titulo, meta.canal, meta.duracao, meta.legendaTipo ? 'Legenda ' + meta.legendaTipo : ''].filter(Boolean).join(' · ')
+    : '';
+  document.getElementById('resultado').classList.add('ativo');
+}
+
+async function analisar(usarColada) {
+  const url = document.getElementById('urlInput').value.trim();
+  const transcricao = usarColada ? document.getElementById('transcricaoInput').value.trim() : '';
+  if (usarColada && !transcricao) {
+    mostrarStatus('erro', 'Cole a transcrição na caixa antes de analisar.');
+    return;
+  }
+  if (!usarColada && !url) return;
+
+  const variacao = document.querySelector('input[name="variacao"]:checked').value;
+  const botoes = [document.getElementById('btnAnalisar'), document.getElementById('btnAnalisarColada')];
+  botoes.forEach(b => b.disabled = true);
+
+  document.getElementById('resultado').classList.remove('ativo');
+  mostrarStatus('loading', usarColada
+    ? 'Gerando a análise... pode levar até 2 minutos.'
+    : 'Buscando a transcrição e gerando a análise... pode levar até 2 minutos.');
+
+  try {
+    const resp = await fetch('/api/analisar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, variacao: variacao || undefined, transcricao: transcricao || undefined }),
+    });
+
+    let data;
+    try {
+      data = await resp.json();
+    } catch (parseErr) {
+      mostrarStatus('erro', 'Resposta inesperada do servidor (status ' + resp.status + '). Tente novamente.');
+      return;
+    }
+
+    if (!resp.ok) {
+      if (data.precisaColar) {
+        mostrarStatus('aviso', data.erro || 'Não consegui buscar a transcrição.', data.detalhe);
+        abrirColar();
+        return;
+      }
+      mostrarStatus('erro', data.erro || 'Erro desconhecido', data.detalhe);
+      if (data.transcricao) {
+        mostrarRelatorio('## Transcrição (sem análise)\n\n' + data.transcricao);
+      }
+      return;
+    }
+
+    mostrarRelatorio(data.analise, data.meta);
+    esconderStatus();
+
+    // Salvar no histórico
+    const titulo = (data.meta && data.meta.titulo)
+      || (data.analise.match(/Título:\*?\*?\s*(.+)/i) || ['', url || 'Transcrição colada'])[1].substring(0, 80);
+    historico.unshift({ titulo, url, data: new Date().toLocaleDateString('pt-BR'), md: data.analise, meta: data.meta });
+    if (historico.length > 20) historico.pop();
+    try { localStorage.setItem('yt-historico', JSON.stringify(historico)); } catch(e) {}
+    renderizarHistorico();
+
+  } catch (err) {
+    mostrarStatus('erro', 'Erro de conexão: ' + err.message);
+  } finally {
+    botoes.forEach(b => b.disabled = false);
+  }
+}
+
+function copiar() {
+  const btn = document.getElementById('btnCopiar');
+  navigator.clipboard.writeText(markdownBruto).then(() => {
+    btn.textContent = 'Copiado!';
+    btn.classList.add('copiado');
+    setTimeout(() => { btn.textContent = 'Copiar Markdown'; btn.classList.remove('copiado'); }, 2000);
+  }).catch(() => { btn.textContent = 'Não foi possível copiar'; });
+}
+
+function renderizarHistorico() {
+  if (!historico.length) return;
+  const el = document.getElementById('historico');
+  el.innerHTML = '<h3>Análises recentes</h3>' +
+    historico.map((h, i) =>
+      `<div class="historico-item" onclick="carregarHistorico(${i})">
+        <span class="titulo">${escaparHtml(h.titulo)}</span>
+        <span class="data">${escaparHtml(h.data)}</span>
+      </div>`
+    ).join('');
+}
+
+function carregarHistorico(i) {
+  mostrarRelatorio(historico[i].md, historico[i].meta);
+  document.getElementById('urlInput').value = historico[i].url || '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Enter para analisar
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analisar();
+});
+
+renderizarHistorico();
+</script>
+</body>
+</html>
