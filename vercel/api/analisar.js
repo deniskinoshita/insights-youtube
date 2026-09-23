@@ -70,10 +70,18 @@ function formatarDuracao(seg) {
   return h ? `${h}h${String(m).padStart(2, "0")}min` : `${m}min${String(s).padStart(2, "0")}s`;
 }
 
+const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// O plano grátis do Supadata aceita cerca de 1 pedido por segundo e responde 429
+// ("Limit Exceeded") acima disso, então os pedidos saem um de cada vez e o 429
+// ganha até duas novas tentativas.
 async function supadata(caminho, chave) {
-  const resp = await fetch(SUPADATA + caminho, { headers: { "x-api-key": chave } });
-  const corpo = await resp.json().catch(() => ({}));
-  return { status: resp.status, corpo };
+  for (let tentativa = 0; ; tentativa++) {
+    const resp = await fetch(SUPADATA + caminho, { headers: { "x-api-key": chave } });
+    const corpo = await resp.json().catch(() => ({}));
+    if (resp.status !== 429 || tentativa >= 2) return { status: resp.status, corpo };
+    await esperar(1500 * (tentativa + 1));
+  }
 }
 
 // Busca a transcrição pelo Supadata, que acessa o YouTube sem o bloqueio de bot
@@ -83,10 +91,11 @@ async function buscarTranscricao(url, chave) {
   let { status, corpo } = await supadata("/transcript?" + q, chave);
 
   if (status === 202 && corpo.jobId) {
+    const jobId = corpo.jobId;
     const limite = Date.now() + 60000;
     while (Date.now() < limite) {
-      await new Promise((r) => setTimeout(r, 2000));
-      ({ status, corpo } = await supadata("/transcript/" + corpo.jobId, chave));
+      await esperar(2000);
+      ({ status, corpo } = await supadata("/transcript/" + jobId, chave));
       if (corpo.status === "completed") break;
       if (corpo.status === "failed") {
         throw new Error(corpo.error?.message || corpo.error || "o serviço não conseguiu transcrever o vídeo");
@@ -94,6 +103,9 @@ async function buscarTranscricao(url, chave) {
     }
     if (corpo.status !== "completed") throw new Error("a transcrição demorou demais");
   } else if (status !== 200) {
+    if (status === 429) {
+      throw new Error("o limite do plano do Supadata foi atingido (pedidos demais ou créditos do mês esgotados)");
+    }
     throw new Error(corpo.message || corpo.error || `serviço de transcrição respondeu ${status}`);
   }
 
@@ -162,7 +174,9 @@ export default async function handler(req, res) {
       });
     }
     try {
-      const [t, m] = await Promise.all([buscarTranscricao(url, chave), buscarMeta(id, chave)]);
+      const t = await buscarTranscricao(url, chave);
+      await esperar(1100);
+      const m = await buscarMeta(id, chave);
       transcricao = t.texto;
       meta = { ...m, legendaTipo: t.idioma ? `automática (${t.idioma})` : "automática" };
     } catch (e) {
