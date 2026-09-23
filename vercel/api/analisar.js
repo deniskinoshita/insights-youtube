@@ -58,9 +58,17 @@ Preencha cada campo assim:
 - publico_do_video: para quem o vídeo foi feito, escolhendo um da lista.
 - mensagens: de 1 a 3 mensagens curtas para WhatsApp, cada uma para um destinatário
   diferente (cliente, candidato a assessor, equipe). A primeira é para o destinatário
-  que mais combina com o público do vídeo. Só escreva para "cliente" se o tema
-  realmente interessa a quem investe; um vídeo sobre carreira de assessor, por
-  exemplo, vira mensagem para candidato a assessor e para a equipe, não para cliente.
+  que mais combina com o público do vídeo. Cada destinatário só entra se o vídeo
+  der a ele um motivo próprio, sem ponte forçada:
+    cliente: o tema interessa a quem investe (dinheiro, patrimônio, planejamento,
+    economia que mexe no bolso).
+    candidato a assessor: o vídeo fala de carreira, profissão, mercado de trabalho
+    ou de empreender na assessoria. Um vídeo sobre mercado, economia ou tecnologia
+    não vira convite de carreira só porque "o setor vai mudar".
+    equipe: o vídeo traz algo que o time aplica no dia a dia (técnica de venda,
+    atendimento, produto, gestão, rotina comercial).
+  Se só um destinatário faz sentido, devolva uma mensagem só. É melhor uma
+  mensagem boa do que três parecidas; nunca complete as três por obrigação.
   Cada mensagem segue o SPIN Selling (Neil Rackham), nesta ordem e sem dizer os nomes
   das etapas:
     Situação: uma frase leve sobre o momento da pessoa, de preferência uma pergunta
