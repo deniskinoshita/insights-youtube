@@ -15,6 +15,9 @@
     },
     "api/checar.js": {
       "maxDuration": 300
+    },
+    "api/transcrever.js": {
+      "maxDuration": 60
     }
   }
 }

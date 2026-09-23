@@ -175,6 +175,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       supadata: Boolean(process.env.SUPADATA_API_KEY),
       anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+      groq: Boolean(process.env.GROQ_API_KEY),
       workspace: Boolean(process.env.ANTHROPIC_WORKSPACE_ID),
     });
   }
@@ -182,16 +183,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ erro: "Use POST." });
   }
 
-  const { url, variacao, transcricao: colada } = req.body || {};
+  const { url, variacao, transcricao: colada, origem } = req.body || {};
   const id = extrairId(url);
   let transcricao = "";
   let meta = {};
 
   if (colada && colada.trim()) {
     transcricao = limparColada(colada);
-    meta.legendaTipo = "colada manualmente";
+    meta.legendaTipo = origem === "gravacao" ? "transcrita da gravação da aula" : "colada manualmente";
   } else {
     if (!id) {
+      // Link de outro site (plataforma de curso, por exemplo): o caminho é gravar a aula
+      if (/^https?:\/\//i.test(String(url || "").trim()) && !/youtu\.?be/i.test(url)) {
+        return res.status(400).json({
+          erro: "Esse link não é do YouTube, então não consigo buscar a transcrição sozinho.",
+          detalhe: "Use \"Gravar aula de outra aba\": abra a aula logado em outra aba e o app transcreve o áudio.",
+          outroSite: true,
+        });
+      }
       return res.status(400).json({ erro: "Não reconheci esse link do YouTube. Confira se ele está completo." });
     }
     const chave = process.env.SUPADATA_API_KEY;
