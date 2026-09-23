@@ -160,6 +160,34 @@ button.link:hover { color: var(--accent); }
 }
 .colar textarea:focus { border-color: var(--accent); }
 
+.gravar { display: none; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+.gravar.ativo { display: block; }
+.gravar h3 { font-size: 0.95rem; margin-bottom: 8px; }
+.gravar ol {
+  color: var(--text2);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+.gravar .acoes-gravar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.gravar .painel-gravacao {
+  display: none;
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.88rem;
+}
+.gravar .painel-gravacao.ativo { display: block; }
+.gravar .ponto-rec {
+  display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  background: #e5484d; margin-right: 8px; animation: piscar 1.2s infinite;
+}
+@keyframes piscar { 50% { opacity: 0.25; } }
+.gravar small { display: block; color: var(--text2); margin-top: 4px; }
+
 .status {
   display: none;
   align-items: center;
@@ -436,7 +464,7 @@ table.dados th { color: var(--text2); font-weight: 600; font-size: 0.76rem; text
 
   <div class="card">
     <div class="input-row">
-      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+      <input type="text" id="urlInput" placeholder="Link do YouTube ou da aula" autocomplete="off">
       <button class="primary" id="btnAnalisar" onclick="analisar()">Analisar</button>
     </div>
     <div class="variacao-row">
@@ -446,6 +474,24 @@ table.dados th { color: var(--text2); font-weight: 600; font-size: 0.76rem; text
       <label><input type="radio" name="variacao" value="aula"> Aula técnica</label>
     </div>
     <button class="link" id="btnAbrirColar" onclick="abrirColar()">Já tenho a transcrição, quero colar</button>
+    <button class="link" id="btnAbrirGravar" onclick="abrirGravar()">O vídeo não é do YouTube (aula de curso)</button>
+
+    <div class="gravar" id="gravar">
+      <h3>Gravar aula de outra aba</h3>
+      <ol>
+        <li>Abra a aula em outra aba do Chrome ou do Edge, já logado na plataforma.</li>
+        <li>Se quiser, cole o link da aula no campo de cima (vai junto no relatório).</li>
+        <li>Clique em <strong>Gravar aula de outra aba</strong>, escolha a aba da aula e deixe marcado <strong>Compartilhar áudio da aba</strong>.</li>
+        <li>Dê play na aula e deixe tocar até o fim, na velocidade normal. Você pode mexer em outras coisas enquanto isso.</li>
+        <li>No fim, clique em <strong>Parar e gerar relatório</strong>.</li>
+      </ol>
+      <div class="acoes-gravar">
+        <button class="primary" id="btnGravar" onclick="iniciarGravacao()">Gravar aula de outra aba</button>
+        <button class="primary" id="btnParar" onclick="pararGravacao()" hidden>Parar e gerar relatório</button>
+        <button class="link" id="btnCancelarGravacao" onclick="cancelarGravacao()" hidden>Cancelar</button>
+      </div>
+      <div class="painel-gravacao" id="painelGravacao"></div>
+    </div>
 
     <div class="colar" id="colar">
       <h3>Colar a transcrição</h3>
@@ -550,6 +596,209 @@ function abrirColar() {
   document.getElementById('colar').classList.add('ativo');
   document.getElementById('btnAbrirColar').hidden = true;
   document.getElementById('transcricaoInput').focus();
+}
+
+/* ---------- Gravação de aula (vídeos fora do YouTube) ---------- */
+
+// Grava o áudio da aba da aula em trechos independentes de poucos minutos. Cada trecho
+// vai para /api/transcrever assim que fecha, então a transcrição anda junto com a aula
+// e cada pedido fica abaixo do limite de tamanho da Vercel.
+const TRECHO_MS = 3 * 60 * 1000;
+let gravacao = null;
+
+function abrirGravar() {
+  document.getElementById('gravar').classList.add('ativo');
+  document.getElementById('btnAbrirGravar').hidden = true;
+}
+
+function formatoAudio() {
+  const opcoes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+  return opcoes.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+}
+
+async function iniciarGravacao() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || !window.MediaRecorder) {
+    mostrarStatus('erro', 'Este navegador não consegue gravar o áudio de outra aba.', 'Use o Chrome ou o Edge no computador.');
+    return;
+  }
+  let tela;
+  try {
+    tela = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      preferCurrentTab: false,
+      selfBrowserSurface: 'exclude',
+      systemAudio: 'include',
+    });
+  } catch (e) {
+    mostrarStatus('aviso', 'A gravação não começou.', 'Você cancelou a escolha da aba ou o navegador não deu permissão.');
+    return;
+  }
+  const faixas = tela.getAudioTracks();
+  if (!faixas.length) {
+    tela.getTracks().forEach(t => t.stop());
+    mostrarStatus('erro', 'A aba foi escolhida, mas sem o áudio.', 'Tente de novo e deixe marcado "Compartilhar áudio da aba" na janela de escolha.');
+    return;
+  }
+
+  esconderStatus();
+  gravacao = {
+    tela,
+    audio: new MediaStream(faixas),
+    tipo: formatoAudio(),
+    inicio: Date.now(),
+    textos: [],
+    enviados: 0,
+    prontos: 0,
+    erros: [],
+    fila: Promise.resolve(),
+    gravador: null,
+    relogio: null,
+    cancelada: false,
+    parando: false,
+  };
+  // Se a pessoa clicar em "Parar de compartilhar" na barra do navegador, fecha como se tivesse clicado em parar
+  tela.getTracks().forEach(t => t.addEventListener('ended', () => { if (gravacao && !gravacao.parando) pararGravacao(); }));
+
+  document.getElementById('btnGravar').hidden = true;
+  document.getElementById('btnParar').hidden = false;
+  document.getElementById('btnCancelarGravacao').hidden = false;
+  document.getElementById('btnAnalisar').disabled = true;
+  document.getElementById('btnAnalisarColada').disabled = true;
+  document.getElementById('painelGravacao').classList.add('ativo');
+
+  novoTrecho();
+  gravacao.relogio = setInterval(atualizarPainelGravacao, 1000);
+  atualizarPainelGravacao();
+}
+
+function novoTrecho() {
+  const g = gravacao;
+  const partes = [];
+  const opcoes = { audioBitsPerSecond: 32000 };
+  if (g.tipo) opcoes.mimeType = g.tipo;
+  const gravador = new MediaRecorder(g.audio, opcoes);
+  const indice = g.enviados++;
+  gravador.ondataavailable = e => { if (e.data && e.data.size) partes.push(e.data); };
+  gravador.onstop = () => {
+    const blob = new Blob(partes, { type: gravador.mimeType || g.tipo || 'audio/webm' });
+    if (g.cancelada) return;
+    // Trecho quase vazio (aula parada, silêncio curto): não vale mandar
+    if (blob.size < 4000) { g.prontos++; g.textos[indice] = ''; atualizarPainelGravacao(); return; }
+    g.fila = g.fila.then(() => transcreverTrecho(g, indice, blob));
+  };
+  gravador.start();
+  g.gravador = gravador;
+  g.corte = setTimeout(() => {
+    if (gravacao !== g || g.parando) return;
+    gravador.stop();
+    novoTrecho();
+  }, TRECHO_MS);
+}
+
+function paraBase64(blob) {
+  return new Promise((ok, falha) => {
+    const leitor = new FileReader();
+    leitor.onload = () => ok(String(leitor.result).split(',')[1] || '');
+    leitor.onerror = () => falha(leitor.error);
+    leitor.readAsDataURL(blob);
+  });
+}
+
+async function transcreverTrecho(g, indice, blob) {
+  if (g.cancelada) return;
+  try {
+    const resp = await fetch('/api/transcrever', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audio: await paraBase64(blob), tipo: blob.type }),
+    });
+    const data = await resp.json().catch(() => ({ erro: 'Resposta inesperada do servidor (status ' + resp.status + ').' }));
+    if (!resp.ok) throw new Error([data.erro, data.detalhe].filter(Boolean).join(' '));
+    g.textos[indice] = data.texto || '';
+  } catch (e) {
+    g.textos[indice] = '';
+    g.erros.push('Trecho ' + (indice + 1) + ': ' + e.message);
+  } finally {
+    g.prontos++;
+    atualizarPainelGravacao();
+  }
+}
+
+function atualizarPainelGravacao() {
+  const g = gravacao;
+  if (!g) return;
+  const seg = Math.floor((Date.now() - g.inicio) / 1000);
+  const tempo = Math.floor(seg / 60) + 'min' + String(seg % 60).padStart(2, '0') + 's';
+  const fechados = g.parando ? g.enviados : g.enviados - 1;
+  const linhas = g.parando
+    ? ['<div class="spinner" style="display:inline-block;vertical-align:middle;margin-right:8px"></div>Terminando a transcrição: ' + g.prontos + ' de ' + g.enviados + ' trechos prontos']
+    : ['<span class="ponto-rec"></span>Gravando: ' + tempo,
+       '<small>Trechos transcritos: ' + g.prontos + ' de ' + fechados + ' (um trecho a cada 3 minutos)</small>'];
+  if (g.erros.length) linhas.push('<small>' + esc(g.erros[g.erros.length - 1]) + '</small>');
+  document.getElementById('painelGravacao').innerHTML = linhas.join('');
+}
+
+function encerrarCaptura(g) {
+  clearTimeout(g.corte);
+  clearInterval(g.relogio);
+  g.tela.getTracks().forEach(t => t.stop());
+}
+
+function restaurarBotoesGravacao() {
+  document.getElementById('btnGravar').hidden = false;
+  document.getElementById('btnParar').hidden = true;
+  document.getElementById('btnCancelarGravacao').hidden = true;
+  document.getElementById('btnAnalisar').disabled = false;
+  document.getElementById('btnAnalisarColada').disabled = false;
+}
+
+function cancelarGravacao() {
+  const g = gravacao;
+  if (!g) return;
+  g.cancelada = true;
+  g.parando = true;
+  if (g.gravador && g.gravador.state !== 'inactive') g.gravador.stop();
+  encerrarCaptura(g);
+  gravacao = null;
+  document.getElementById('painelGravacao').classList.remove('ativo');
+  restaurarBotoesGravacao();
+}
+
+async function pararGravacao() {
+  const g = gravacao;
+  if (!g || g.parando) return;
+  g.parando = true;
+  document.getElementById('btnParar').hidden = true;
+  const fimDoUltimo = new Promise(ok => g.gravador.addEventListener('stop', ok, { once: true }));
+  if (g.gravador.state !== 'inactive') g.gravador.stop();
+  encerrarCaptura(g);
+  g.relogio = setInterval(atualizarPainelGravacao, 1000);
+  atualizarPainelGravacao();
+
+  await fimDoUltimo;
+  // O onstop do último trecho já colocou a transcrição dele na fila; espera a fila toda
+  await new Promise(ok => setTimeout(ok, 0));
+  await g.fila;
+  clearInterval(g.relogio);
+  if (g.cancelada) return;
+  gravacao = null;
+  document.getElementById('painelGravacao').classList.remove('ativo');
+  restaurarBotoesGravacao();
+
+  const texto = g.textos.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (!texto) {
+    mostrarStatus('erro', 'Não saiu texto da gravação.', g.erros[0] || 'Confira se a aula estava tocando com som e se "Compartilhar áudio da aba" estava marcado.');
+    return;
+  }
+  // Deixa a transcrição na caixa de colar, para dar para conferir ou reaproveitar
+  abrirColar();
+  document.getElementById('transcricaoInput').value = texto;
+  if (g.erros.length) {
+    mostrarStatus('aviso', 'Parte da aula não foi transcrita (' + g.erros.length + ' trecho(s)). O relatório sai com o que deu certo.', g.erros[0]);
+    await new Promise(ok => setTimeout(ok, 2500));
+  }
+  analisar(true, 'gravacao');
 }
 
 /* ---------- Gráficos ---------- */
@@ -805,7 +1054,7 @@ function atualizarChecagemNaTela() {
 
 /* ---------- Chamadas ---------- */
 
-async function analisar(usarColada) {
+async function analisar(usarColada, origem) {
   const url = document.getElementById('urlInput').value.trim();
   const transcricao = usarColada ? document.getElementById('transcricaoInput').value.trim() : '';
   if (usarColada && !transcricao) {
@@ -827,7 +1076,7 @@ async function analisar(usarColada) {
     const resp = await fetch('/api/analisar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, variacao: variacao || undefined, transcricao: transcricao || undefined }),
+      body: JSON.stringify({ url, variacao: variacao || undefined, transcricao: transcricao || undefined, origem: origem || undefined }),
     });
 
     let data;
@@ -839,6 +1088,11 @@ async function analisar(usarColada) {
     }
 
     if (!resp.ok) {
+      if (data.outroSite) {
+        mostrarStatus('aviso', data.erro, data.detalhe);
+        abrirGravar();
+        return;
+      }
       if (data.precisaColar) {
         mostrarStatus('aviso', data.erro || 'Não consegui buscar a transcrição.', data.detalhe);
         abrirColar();

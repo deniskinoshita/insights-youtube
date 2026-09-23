@@ -70,6 +70,8 @@ O código fica na pasta `vercel/` e a Vercel publica a partir dela (Root Directo
   assessoria, mensagens no roteiro SPIN e perguntas SPIN.
 - `api/checar.js`: pesquisa na internet cada afirmação que precisa de checagem e marca como
   confirmada, parcial, divergente ou não encontrada ("líder deve buscar").
+- `api/transcrever.js`: transcreve pela Groq (Whisper) o áudio gravado de aulas fora do
+  YouTube, como as de plataformas de curso com login.
 - `public/index.html`: a página, com os gráficos e o download do relatório (A4) e da
   apresentação (16:9) em PDF.
 
@@ -79,11 +81,16 @@ Variáveis de ambiente na Vercel:
 |---|---|
 | `ANTHROPIC_API_KEY` | gerar a análise e a checagem |
 | `SUPADATA_API_KEY` | buscar a transcrição do YouTube |
+| `GROQ_API_KEY` | transcrever aulas gravadas de outros sites (chave em console.groq.com) |
 | `ANTHROPIC_WORKSPACE_ID` | só se a chave da Anthropic não pertencer a um workspace |
 
 Para conferir se as chaves estão configuradas, abra `/api/analisar` no navegador: a resposta
 diz só se cada uma existe, nunca o valor. Se a transcrição automática falhar, a página abre
 uma caixa para colar a transcrição copiada do YouTube.
+
+Para vídeos fora do YouTube (aulas de curso com login), use "O vídeo não é do YouTube": a
+página grava o áudio da aba da aula (Chrome ou Edge no computador) em trechos de 3 minutos,
+transcreve cada um pela Groq enquanto a aula toca e, ao parar, gera o relatório padrão.
 
 ## Estrutura
 
