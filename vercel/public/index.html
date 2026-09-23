@@ -498,6 +498,8 @@ let atual = null;          // { relatorio, meta, url, checagem }
 let graficosTela = [];
 let historico = [];
 try { historico = JSON.parse(localStorage.getItem('yt-historico') || '[]'); } catch(e) {}
+// Descarta entradas vazias (ex.: gravadas por uma versão antiga da página)
+historico = historico.filter(h => h && (h.relatorio || typeof h.md === 'string'));
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
