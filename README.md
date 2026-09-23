@@ -59,6 +59,32 @@ export ANTHROPIC_API_KEY="sua-chave"
 
 Sem a chave, o painel salva só a transcrição. Você pode pedir a análise depois pelo Claude Code.
 
+## Versão online (Vercel)
+
+Endereço: https://insights-youtube-brauna.vercel.app
+
+O código fica na pasta `vercel/` e a Vercel publica a partir dela (Root Directory = `vercel`).
+
+- `api/analisar.js`: busca a transcrição pelo Supadata (o YouTube bloqueia os servidores da
+  Vercel) e gera o relatório em JSON: resumo executivo, dados com fonte, gráficos, áreas da
+  assessoria, mensagens no roteiro SPIN e perguntas SPIN.
+- `api/checar.js`: pesquisa na internet cada afirmação que precisa de checagem e marca como
+  confirmada, parcial, divergente ou não encontrada ("líder deve buscar").
+- `public/index.html`: a página, com os gráficos e o download do relatório (A4) e da
+  apresentação (16:9) em PDF.
+
+Variáveis de ambiente na Vercel:
+
+| Variável | Para quê |
+|---|---|
+| `ANTHROPIC_API_KEY` | gerar a análise e a checagem |
+| `SUPADATA_API_KEY` | buscar a transcrição do YouTube |
+| `ANTHROPIC_WORKSPACE_ID` | só se a chave da Anthropic não pertencer a um workspace |
+
+Para conferir se as chaves estão configuradas, abra `/api/analisar` no navegador: a resposta
+diz só se cada uma existe, nunca o valor. Se a transcrição automática falhar, a página abre
+uma caixa para colar a transcrição copiada do YouTube.
+
 ## Estrutura
 
 ```
@@ -69,6 +95,7 @@ insights-youtube/
 ├── INSTALAR.md                guia de instalação detalhado
 ├── transcricoes/              uma por vídeo (não sobe pro git)
 ├── analises/                  uma por vídeo (não sobe pro git)
+├── vercel/                    versão online (Vercel)
 └── .claude/skills/youtube-insights/SKILL.md
 ```
 

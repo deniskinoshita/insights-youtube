@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insights YouTube | Braúna</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #242836;
+  --border: #2e3348;
+  --text: #e8eaf0;
+  --text2: #9ca3b8;
+  --accent: #6c8cff;
+  --accent2: #4a6adf;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --radius: 12px;
+  /* Status da checagem: cor + ícone + rótulo, nunca só a cor */
+  --st-confirmada: #34d399;
+  --st-parcial: #fbbf24;
+  --st-divergente: #f87171;
+  --st-nao_encontrada: #9ca3b8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+header {
+  text-align: center;
+  padding: 32px 0 24px;
+}
+header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+header h1 span { color: var(--accent); }
+header p {
+  color: var(--text2);
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.input-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.input-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-row input:focus { border-color: var(--accent); }
+.input-row input::placeholder { color: var(--text2); }
+.variacao-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.variacao-row label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  color: var(--text2);
+  cursor: pointer;
+  padding: 6px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  transition: all 0.2s;
+}
+.variacao-row label:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(108, 140, 255, 0.1);
+}
+.variacao-row input { display: none; }
+button.primary {
+  padding: 12px 28px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+button.primary:hover { background: var(--accent2); }
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.link {
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+button.link:hover { color: var(--accent); }
+
+.colar { display: none; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+.colar.ativo { display: block; }
+.colar h3 { font-size: 0.95rem; margin-bottom: 8px; }
+.colar ol {
+  color: var(--text2);
+  font-size: 0.84rem;
+  line-height: 1.6;
+  padding-left: 20px;
+  margin-bottom: 12px;
+}
+.colar textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 12px 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  margin-bottom: 12px;
+}
+.colar textarea:focus { border-color: var(--accent); }
+
+.status {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+.status.loading {
+  display: flex;
+  background: rgba(108, 140, 255, 0.1);
+  border: 1px solid rgba(108, 140, 255, 0.2);
+  color: var(--accent);
+}
+.status.erro {
+  display: block;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  color: var(--danger);
+}
+.status.aviso {
+  display: block;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  color: var(--warn);
+}
+.status small { display: block; opacity: 0.8; margin-top: 4px; }
+.spinner {
+  width: 18px; height: 18px;
+  flex: none;
+  border: 2px solid rgba(108,140,255,0.3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.resultado { display: none; }
+.resultado.ativo { display: block; }
+
+.resultado-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.resultado-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.meta {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-bottom: 16px;
+}
+.btn-sec {
+  padding: 8px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text2);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-sec:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.btn-sec.forte { color: var(--text); border-color: var(--accent); }
+.btn-sec.feito { border-color: var(--success); color: var(--success); }
+
+.md-body {
+  line-height: 1.75;
+  font-size: 0.92rem;
+}
+.md-body h2 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-top: 28px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+}
+.md-body h2:first-child { margin-top: 0; }
+.md-body p { margin-bottom: 10px; }
+.md-body ul, .md-body ol {
+  margin-bottom: 10px;
+  padding-left: 24px;
+}
+.md-body li { margin-bottom: 6px; }
+.md-body strong { color: #fff; }
+.md-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 10px 16px;
+  margin: 12px 0;
+  background: rgba(108, 140, 255, 0.05);
+  border-radius: 0 8px 8px 0;
+  color: var(--text2);
+  font-style: italic;
+}
+.md-body code {
+  background: var(--surface2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+.md-body a { color: var(--accent); }
+
+.resumo {
+  background: rgba(108, 140, 255, 0.07);
+  border: 1px solid rgba(108, 140, 255, 0.25);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 8px;
+}
+.resumo h2 { border: none; margin: 0 0 6px; padding: 0; }
+.resumo ul { margin: 0; }
+.tese { font-size: 1rem; color: var(--text); }
+
+.grafico { position: relative; height: 260px; margin: 8px 0 4px; }
+.grafico.alto { height: 320px; }
+.legenda-grafico { font-size: 0.76rem; color: var(--text2); margin-bottom: 14px; }
+
+.tabela-wrap { overflow-x: auto; margin-bottom: 10px; }
+table.dados { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+table.dados th, table.dados td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+table.dados th { color: var(--text2); font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.sem-fonte { color: var(--warn); }
+
+.placar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 6px 0 14px; }
+.placar div { background: var(--surface2); border-radius: 8px; padding: 10px 12px; }
+.placar strong { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; color: var(--text); }
+.placar span { font-size: 0.76rem; color: var(--text2); }
+@media (max-width: 560px) { .placar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.checagem { list-style: none; padding: 0 !important; }
+.checagem li {
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 8px !important;
+  border-left: 4px solid var(--cor, var(--border));
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--cor);
+  color: var(--cor);
+  margin-bottom: 6px;
+}
+.checagem .afirmacao { font-weight: 600; color: var(--text); display: block; margin-bottom: 4px; }
+.checagem .explicacao, .checagem .fontes { font-size: 0.84rem; color: var(--text2); }
+.checagem .orientacao { font-size: 0.84rem; margin-top: 4px; }
+.checagem .lider { color: var(--warn); font-weight: 600; }
+
+.areas-lista { list-style: none; padding: 0 !important; }
+.areas-lista li { font-size: 0.86rem; }
+.areas-lista b { color: var(--text); }
+
+.mensagem {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 16px 18px;
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.nota { font-size: 0.78rem; color: var(--text2); }
+
+.historico { margin-top: 32px; }
+.historico h3 {
+  font-size: 0.95rem;
+  color: var(--text2);
+  margin-bottom: 12px;
+}
+.historico-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.historico-item:hover { border-color: var(--accent); }
+.historico-item .titulo {
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.historico-item .data {
+  font-size: 0.78rem;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+  .input-row { flex-direction: column; }
+}
+
+/* Área onde os PDFs são montados antes da captura: fora da tela, mas no layout */
+#pdf-area { position: absolute; left: -20000px; top: 0; }
+.pdf-pagina, .pdf-slide {
+  background: #ffffff;
+  color: #1b2330;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+.pdf-pagina { width: 794px; height: 1123px; padding: 56px 60px 70px; }
+.pdf-pagina .corpo { height: 997px; overflow: hidden; }
+.pdf-pagina .rodape {
+  position: absolute; left: 60px; right: 60px; bottom: 28px;
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: #7a8190; border-top: 1px solid #e3e6ec; padding-top: 8px;
+}
+.pdf-pagina h1 { font-size: 24px; line-height: 1.25; margin-bottom: 6px; color: #13233f; }
+.pdf-pagina h2 { font-size: 15px; color: #2a5bd7; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #e3e6ec; }
+.pdf-pagina p, .pdf-pagina li { font-size: 12px; line-height: 1.55; }
+.pdf-pagina ul, .pdf-pagina ol { padding-left: 18px; }
+.pdf-pagina li { margin-bottom: 4px; }
+.pdf-pagina .sub { font-size: 11px; color: #5b6475; margin-bottom: 4px; }
+.pdf-pagina .caixa { background: #eef3ff; border-radius: 8px; padding: 12px 16px; margin: 6px 0; }
+.pdf-pagina .msg { background: #f4f6f9; border-radius: 8px; padding: 12px 16px; white-space: pre-wrap; font-size: 12.5px; line-height: 1.6; }
+.pdf-pagina img.grafico-img { width: 100%; height: auto; display: block; margin: 4px 0; }
+.pdf-pagina table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.pdf-pagina th, .pdf-pagina td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #e3e6ec; vertical-align: top; }
+.pdf-pagina th { color: #5b6475; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+.pdf-check { border-left: 4px solid var(--cor); background: #f7f8fa; padding: 8px 12px; margin-bottom: 6px; border-radius: 0 6px 6px 0; }
+.pdf-check .rot { font-size: 10.5px; font-weight: 700; color: var(--cor); }
+.pdf-check p { font-size: 11.5px; }
+.pdf-check .fonte { font-size: 10px; color: #5b6475; word-break: break-all; }
+
+.pdf-slide { width: 1280px; height: 720px; padding: 64px 80px; }
+.pdf-slide .marca { position: absolute; left: 80px; bottom: 32px; font-size: 14px; color: #7a8190; }
+.pdf-slide .num { position: absolute; right: 80px; bottom: 32px; font-size: 14px; color: #7a8190; }
+.pdf-slide .faixa { position: absolute; left: 0; top: 0; bottom: 0; width: 14px; background: #2a5bd7; }
+.pdf-slide h2 { font-size: 46px; line-height: 1.15; color: #13233f; margin-bottom: 26px; }
+.pdf-slide .rotulo { font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: #2a5bd7; font-weight: 700; margin-bottom: 14px; }
+.pdf-slide li, .pdf-slide p { font-size: 27px; line-height: 1.45; }
+.pdf-slide ul, .pdf-slide ol { padding-left: 28px; }
+.pdf-slide li { margin-bottom: 16px; }
+.pdf-slide.capa { background: #13233f; color: #fff; display: flex; flex-direction: column; justify-content: center; }
+.pdf-slide.capa h1 { font-size: 54px; line-height: 1.12; margin: 18px 0 20px; max-width: 1000px; }
+.pdf-slide.capa .rotulo { color: #9db6ff; }
+.pdf-slide.capa p { font-size: 22px; color: #c9d3ea; }
+.pdf-slide .duas { display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items: start; }
+.pdf-slide img { max-width: 100%; display: block; }
+.pdf-slide .citacao { font-size: 40px; line-height: 1.35; color: #13233f; border-left: 6px solid #2a5bd7; padding-left: 24px; }
+.pdf-slide .msg { background: #f4f6f9; border-radius: 12px; padding: 28px 32px; white-space: pre-wrap; font-size: 28px; line-height: 1.5; }
+.pdf-slide .item-check { border-left: 6px solid var(--cor); padding: 6px 0 6px 16px; margin-bottom: 14px; }
+.pdf-slide .item-check b { color: var(--cor); font-size: 18px; }
+.pdf-slide .item-check p { font-size: 21px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Insights <span>YouTube</span></h1>
+    <p>Cole o link, receba o relatório padrão Braúna</p>
+  </header>
+
+  <div class="card">
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+      <button class="primary" id="btnAnalisar" onclick="analisar()">Analisar</button>
+    </div>
+    <div class="variacao-row">
+      <label><input type="radio" name="variacao" value="" checked> Padrão</label>
+      <label><input type="radio" name="variacao" value="palestrante"> Estudo de palestrante</label>
+      <label><input type="radio" name="variacao" value="concorrente"> Análise de concorrente</label>
+      <label><input type="radio" name="variacao" value="aula"> Aula técnica</label>
+    </div>
+    <button class="link" id="btnAbrirColar" onclick="abrirColar()">Já tenho a transcrição, quero colar</button>
+
+    <div class="colar" id="colar">
+      <h3>Colar a transcrição</h3>
+      <ol>
+        <li>Abra o vídeo no YouTube.</li>
+        <li>Na descrição, clique em <strong>…mais</strong> e depois em <strong>Mostrar transcrição</strong>.</li>
+        <li>Selecione todo o texto da transcrição, copie e cole aqui.</li>
+      </ol>
+      <textarea id="transcricaoInput" placeholder="Cole aqui a transcrição do vídeo. As marcações de tempo são removidas automaticamente."></textarea>
+      <button class="primary" id="btnAnalisarColada" onclick="analisar(true)">Analisar transcrição colada</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="resultado card" id="resultado">
+    <div class="resultado-header">
+      <h2>Relatório</h2>
+      <div class="acoes">
+        <button class="btn-sec" id="btnCopiar" onclick="copiar()">Copiar texto</button>
+        <button class="btn-sec forte" id="btnPdfRelatorio" onclick="baixarRelatorio()">Baixar relatório (PDF)</button>
+        <button class="btn-sec forte" id="btnPdfApresentacao" onclick="baixarApresentacao()">Baixar apresentação (PDF)</button>
+      </div>
+    </div>
+    <div class="meta" id="meta"></div>
+    <div class="md-body" id="conteudo"></div>
+  </div>
+
+  <div class="historico" id="historico"></div>
+</div>
+
+<div id="pdf-area" aria-hidden="true"></div>
+
+<script>
+const STATUS = {
+  confirmada:     { rotulo: 'Checada e confirmada', curto: 'Confirmadas', icone: '✓', cor: '#34d399', corPdf: '#1a8f5a' },
+  parcial:        { rotulo: 'Confirmada em parte', curto: 'Em parte', icone: '≈', cor: '#fbbf24', corPdf: '#b07a00' },
+  divergente:     { rotulo: 'Fontes dizem outra coisa', curto: 'Divergentes', icone: '✗', cor: '#f87171', corPdf: '#c73a3a' },
+  nao_encontrada: { rotulo: 'Não encontrada: líder deve buscar', curto: 'Sem confirmação', icone: '?', cor: '#9ca3b8', corPdf: '#6b7280' },
+};
+const ORDEM_STATUS = ['confirmada', 'parcial', 'divergente', 'nao_encontrada'];
+
+// Tema dos gráficos: o site é escuro, os PDFs são claros
+const TEMAS = {
+  tela: { serie: '#3987e5', texto: '#e8eaf0', texto2: '#9ca3b8', grade: '#2e3348' },
+  pdf:  { serie: '#2a78d6', texto: '#1b2330', texto2: '#5b6475', grade: '#e3e6ec' },
+};
+
+let atual = null;          // { relatorio, meta, url, checagem }
+let graficosTela = [];
+let historico = [];
+try { historico = JSON.parse(localStorage.getItem('yt-historico') || '[]'); } catch(e) {}
+// Descarta entradas vazias (ex.: gravadas por uma versão antiga da página)
+historico = historico.filter(h => h && (h.relatorio || typeof h.md === 'string'));
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function fmtNum(v) {
+  return Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+
+/* ---------- Relatórios antigos (salvos em Markdown) ---------- */
+
+function renderizarMd(md) {
+  let html = esc(md)
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^---$/gm, '<hr>')
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  return html.split('\n\n').map(b => {
+    b = b.trim();
+    if (!b) return '';
+    if (/^<[hublor]/.test(b)) return b;
+    return '<p>' + b + '</p>';
+  }).join('\n');
+}
+
+/* ---------- Status e navegação ---------- */
+
+function mostrarStatus(tipo, msg, detalhe) {
+  const el = document.getElementById('status');
+  el.className = 'status ' + tipo;
+  el.innerHTML = tipo === 'loading'
+    ? '<div class="spinner"></div><span>' + esc(msg) + '</span>'
+    : esc(msg) + (detalhe ? '<small>' + esc(detalhe) + '</small>' : '');
+}
+
+function esconderStatus() {
+  document.getElementById('status').className = 'status';
+}
+
+function abrirColar() {
+  document.getElementById('colar').classList.add('ativo');
+  document.getElementById('btnAbrirColar').hidden = true;
+  document.getElementById('transcricaoInput').focus();
+}
+
+/* ---------- Gráficos ---------- */
+
+// Escreve o valor na ponta de cada barra, para o número não depender só da cor
+const rotulosNaBarra = {
+  id: 'rotulosNaBarra',
+  afterDatasetsDraw(chart, _args, opts) {
+    const { ctx } = chart;
+    ctx.save();
+    ctx.fillStyle = opts.cor;
+    ctx.font = '600 ' + (opts.tamanho || 12) + 'px -apple-system, Segoe UI, Roboto, sans-serif';
+    const horizontal = chart.options.indexAxis === 'y';
+    chart.getDatasetMeta(0).data.forEach((barra, i) => {
+      const valor = chart.data.datasets[0].data[i];
+      const texto = (opts.formato || fmtNum)(valor);
+      if (horizontal) {
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(texto, barra.x + 6, barra.y);
+      } else {
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(texto, barra.x, barra.y - 4);
+      }
+    });
+    ctx.restore();
+  },
+};
+
+function configGrafico(spec, tema, escala) {
+  const t = TEMAS[tema];
+  const fonte = { size: Math.round(12 * (escala || 1)) };
+  const horizontal = spec.horizontal;
+  const eixoValor = {
+    beginAtZero: true,
+    grid: { color: t.grade },
+    border: { display: false },
+    ticks: { color: t.texto2, font: fonte },
+    max: spec.max,
+  };
+  if (spec.inteiro) eixoValor.ticks.stepSize = 1;
+  const eixoRotulo = {
+    grid: { display: false },
+    border: { color: t.grade },
+    ticks: { color: t.texto, font: fonte, autoSkip: false, maxRotation: 0 },
+  };
+  const linha = spec.tipo === 'linha';
+  return {
+    type: linha ? 'line' : 'bar',
+    data: {
+      labels: spec.rotulos,
+      datasets: [{
+        data: spec.valores,
+        backgroundColor: spec.cores || t.serie,
+        borderColor: spec.cores || t.serie,
+        borderWidth: linha ? 2 : 0,
+        borderRadius: linha ? 0 : 4,
+        borderSkipped: 'start',
+        pointRadius: linha ? 4 : 0,
+        pointHoverRadius: 6,
+        maxBarThickness: 48,
+        tension: 0,
+      }],
+    },
+    options: {
+      indexAxis: horizontal ? 'y' : 'x',
+      animation: false,
+      responsive: tema === 'tela',
+      maintainAspectRatio: false,
+      layout: { padding: { top: 22, right: horizontal ? 36 : 8 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: tema === 'tela', callbacks: { label: c => ' ' + fmtNum(c.parsed[horizontal ? 'x' : 'y']) + (spec.unidade ? ' ' + spec.unidade : '') } },
+        rotulosNaBarra: linha ? false : { cor: t.texto, tamanho: fonte.size },
+      },
+      scales: horizontal ? { x: eixoValor, y: eixoRotulo } : { x: eixoRotulo, y: eixoValor },
+    },
+    plugins: linha ? [] : [rotulosNaBarra],
+  };
+}
+
+// Gera a imagem de um gráfico para os PDFs (fundo branco, sem animação)
+function graficoComoImagem(spec, largura, altura, escala) {
+  const cx = document.createElement('div');
+  cx.style.cssText = `position:absolute;left:-30000px;top:0;width:${largura}px;height:${altura}px`;
+  const canvas = document.createElement('canvas');
+  canvas.width = largura; canvas.height = altura;
+  cx.appendChild(canvas); document.body.appendChild(cx);
+  const cfg = configGrafico(spec, 'pdf', escala);
+  cfg.options.devicePixelRatio = 2;
+  cfg.plugins.push({ id: 'fundo', beforeDraw: c => { const g = c.ctx; g.save(); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.restore(); } });
+  const chart = new Chart(canvas, cfg);
+  const url = chart.toBase64Image('image/png');
+  chart.destroy(); cx.remove();
+  return url;
+}
+
+function specsDoRelatorio(r) {
+  return (r.graficos || [])
+    .filter(g => Array.isArray(g.pontos) && g.pontos.length >= 2)
+    .map(g => ({
+      titulo: g.titulo, tipo: g.tipo, unidade: g.unidade, fonte: g.fonte,
+      rotulos: g.pontos.map(p => p.rotulo), valores: g.pontos.map(p => p.valor),
+    }));
+}
+
+function specAreas(r) {
+  const areas = [...(r.areas || [])].sort((a, b) => b.relevancia - a.relevancia);
+  return {
+    titulo: 'Onde este conteúdo serve na assessoria (0 a 5)',
+    tipo: 'barra', horizontal: true, max: 5, inteiro: true, unidade: 'de 5',
+    rotulos: areas.map(a => a.area), valores: areas.map(a => Math.max(0, Math.min(5, a.relevancia))),
+  };
+}
+
+const ROTULO_DESTINATARIO = { cliente: 'Para clientes', 'candidato a assessor': 'Para quem quer ser assessor', equipe: 'Para a sua equipe' };
+const ETAPAS_SPIN = [['situacao', 'Situação'], ['problema', 'Problema'], ['implicacao', 'Implicação'], ['necessidade', 'Necessidade de solução']];
+
+// Relatórios antigos tinham uma única mensagem_cliente
+function mensagensDe(r) {
+  if (Array.isArray(r.mensagens) && r.mensagens.length) return r.mensagens;
+  return r.mensagem_cliente ? [{ destinatario: 'cliente', objetivo: '', texto: r.mensagem_cliente }] : [];
+}
+
+function temSpin(r) {
+  return r.perguntas_spin && ETAPAS_SPIN.some(([k]) => (r.perguntas_spin[k] || []).length);
+}
+
+function contagemChecagem(itens) {
+  const c = { confirmada: 0, parcial: 0, divergente: 0, nao_encontrada: 0 };
+  (itens || []).forEach(i => { c[i.status] = (c[i.status] || 0) + 1; });
+  return c;
+}
+
+/* ---------- Tela ---------- */
+
+function htmlChecagem() {
+  const r = atual.relatorio;
+  const ch = atual.checagem;
+  if (!(r.afirmacoes_para_checar || []).length) return '<p class="nota">O vídeo não trouxe afirmações que precisem de checagem.</p>';
+  if (!ch) {
+    return '<div class="status loading" style="margin:0"><div class="spinner"></div><span>Pesquisando cada afirmação na internet... leva de 1 a 3 minutos.</span></div>';
+  }
+  if (ch.erro) {
+    return `<p class="nota" style="color:var(--danger)">${esc(ch.erro)}${ch.detalhe ? ' ' + esc(ch.detalhe) : ''}</p>
+      <button class="btn-sec" onclick="checar()">Tentar checar de novo</button>`;
+  }
+  const cont = contagemChecagem(ch.itens);
+  const placar = ORDEM_STATUS.map(s => `<div><strong style="color:${STATUS[s].cor}">${STATUS[s].icone} ${cont[s]}</strong><span>${STATUS[s].rotulo}</span></div>`).join('');
+  const itens = ch.itens.map(i => {
+    const st = STATUS[i.status];
+    const fontes = i.fontes.length
+      ? '<div class="fontes">Fontes: ' + i.fontes.map(f => `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.titulo || f.url)}</a>`).join(' · ') + '</div>'
+      : '';
+    const orient = i.status === 'nao_encontrada'
+      ? `<div class="orientacao lider">${esc(i.orientacao)}</div>`
+      : (i.orientacao ? `<div class="orientacao">${esc(i.orientacao)}</div>` : '');
+    return `<li style="--cor:${st.cor}">
+      <span class="pill" style="--cor:${st.cor}">${st.icone} ${st.rotulo}</span>
+      <span class="afirmacao">${esc(i.afirmacao)}</span>
+      ${i.explicacao ? `<div class="explicacao">${esc(i.explicacao)}</div>` : ''}
+      ${fontes}${orient}
+    </li>`;
+  }).join('');
+  return `<div class="placar">${placar}</div><ul class="checagem">${itens}</ul>`;
+}
+
+function renderizar() {
+  graficosTela.forEach(g => g.destroy());
+  graficosTela = [];
+  const conteudo = document.getElementById('conteudo');
+  const metaEl = document.getElementById('meta');
+  document.getElementById('resultado').classList.add('ativo');
+
+  if (atual.md) {
+    metaEl.textContent = '';
+    conteudo.innerHTML = renderizarMd(atual.md);
+    ['btnPdfRelatorio', 'btnPdfApresentacao'].forEach(id => document.getElementById(id).disabled = true);
+    return;
+  }
+  ['btnPdfRelatorio', 'btnPdfApresentacao'].forEach(id => document.getElementById(id).disabled = false);
+
+  const r = atual.relatorio;
+  const m = atual.meta || {};
+  metaEl.textContent = [r.ficha.titulo !== 'não informado' ? r.ficha.titulo : m.titulo, r.ficha.canal !== 'não informado' ? r.ficha.canal : m.canal,
+    m.duracao || (r.ficha.duracao !== 'não informado' ? r.ficha.duracao : ''), m.legendaTipo ? 'Legenda ' + m.legendaTipo : ''].filter(Boolean).join(' · ');
+
+  const specs = specsDoRelatorio(r);
+  const graficosHtml = specs.map((s, i) => `
+    <h3 style="font-size:0.9rem;margin-top:10px">${esc(s.titulo)}</h3>
+    <div class="grafico"><canvas id="g-${i}" role="img" aria-label="${esc(s.titulo)}"></canvas></div>
+    <div class="legenda-grafico">${s.unidade ? 'Unidade: ' + esc(s.unidade) + '. ' : ''}Fonte citada no vídeo: ${esc(s.fonte || 'sem fonte')}</div>`).join('');
+  const dados = (r.dados || []).length ? `
+    <div class="tabela-wrap"><table class="dados">
+      <thead><tr><th>Dado citado</th><th>Fonte que o autor deu</th></tr></thead>
+      <tbody>${r.dados.map(d => `<tr><td>${esc(d.dado)}</td><td class="${/sem fonte/i.test(d.fonte_citada) ? 'sem-fonte' : ''}">${esc(d.fonte_citada)}</td></tr>`).join('')}</tbody>
+    </table></div>` : '<p class="nota">O vídeo não citou números.</p>';
+
+  const areasBoas = [...r.areas].sort((a, b) => b.relevancia - a.relevancia);
+
+  conteudo.innerHTML = `
+    <div class="resumo">
+      <h2>Resumo executivo</h2>
+      <ul>${r.resumo_executivo.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+    </div>
+
+    <h2>Tese central</h2>
+    <p class="tese">${esc(r.tese_central)}</p>
+    <p class="nota">Tema: ${esc(r.ficha.tema)} · Público: ${esc(r.ficha.publico)}</p>
+
+    <h2>Pontos principais</h2>
+    <ol>${r.pontos_principais.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+
+    <h2>Dados e números do vídeo</h2>
+    ${graficosHtml || (r.dados.length ? '<p class="nota">Os números do vídeo não se comparam entre si, então não viraram gráfico.</p>' : '')}
+    ${dados}
+
+    <h2>O que checar antes de usar</h2>
+    <div id="bloco-checagem">${htmlChecagem()}</div>
+
+    <h2>Onde usar na assessoria</h2>
+    <div class="grafico alto"><canvas id="g-areas" role="img" aria-label="Relevância por área da assessoria"></canvas></div>
+    <ul class="areas-lista">${areasBoas.filter(a => a.relevancia >= 3).map(a => `<li><b>${esc(a.area)} (${a.relevancia}/5):</b> ${esc(a.como_usar)}</li>`).join('') || '<li>Nenhuma área com relevância alta.</li>'}</ul>
+
+    <h2>Mensagens para enviar</h2>
+    ${r.publico_do_video ? `<p class="nota">Público do vídeo: ${esc(r.publico_do_video)}. Mensagens montadas no roteiro SPIN (situação, problema, implicação, necessidade).</p>` : ''}
+    ${mensagensDe(r).map((msg, i) => `
+      <h3 style="font-size:0.9rem;margin-top:14px">${esc(ROTULO_DESTINATARIO[msg.destinatario] || msg.destinatario)}</h3>
+      ${msg.objetivo ? `<p class="nota">${esc(msg.objetivo)}</p>` : ''}
+      <div class="mensagem">${esc(msg.texto)}</div>
+      <div class="acoes" style="align-items:center">
+        <button class="btn-sec" id="btnCopiarMsg-${i}" onclick="copiarMensagem(${i})">Copiar mensagem</button>
+        <span class="nota">Troque o [nome] e ajuste com o seu jeito antes de enviar.</span>
+      </div>`).join('')}
+
+    ${temSpin(r) ? `<h2>Perguntas SPIN para a conversa</h2>
+      ${ETAPAS_SPIN.filter(([k]) => (r.perguntas_spin[k] || []).length).map(([k, nome]) => `<p><strong>${nome}</strong></p><ul>${r.perguntas_spin[k].map(q => `<li>${esc(q)}</li>`).join('')}</ul>`).join('')}` : ''}
+
+    ${r.ganchos.length ? `<h2>Ganchos de conteúdo</h2><ul>${r.ganchos.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    ${r.frases_citaveis.length ? `<h2>Frases citáveis</h2>${r.frases_citaveis.map(f => `<blockquote>${esc(f.texto)}</blockquote>`).join('')}` : ''}
+    ${r.variacao ? `<h2>${esc(r.variacao.titulo)}</h2><ul>${r.variacao.itens.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+  `;
+
+  if (window.Chart) {
+    specs.forEach((s, i) => graficosTela.push(new Chart(document.getElementById('g-' + i), configGrafico(s, 'tela'))));
+    graficosTela.push(new Chart(document.getElementById('g-areas'), configGrafico(specAreas(r), 'tela')));
+  }
+}
+
+function atualizarChecagemNaTela() {
+  const bloco = document.getElementById('bloco-checagem');
+  if (bloco) bloco.innerHTML = htmlChecagem();
+}
+
+/* ---------- Chamadas ---------- */
+
+async function analisar(usarColada) {
+  const url = document.getElementById('urlInput').value.trim();
+  const transcricao = usarColada ? document.getElementById('transcricaoInput').value.trim() : '';
+  if (usarColada && !transcricao) {
+    mostrarStatus('erro', 'Cole a transcrição na caixa antes de analisar.');
+    return;
+  }
+  if (!usarColada && !url) return;
+
+  const variacao = document.querySelector('input[name="variacao"]:checked').value;
+  const botoes = [document.getElementById('btnAnalisar'), document.getElementById('btnAnalisarColada')];
+  botoes.forEach(b => b.disabled = true);
+
+  document.getElementById('resultado').classList.remove('ativo');
+  mostrarStatus('loading', usarColada
+    ? 'Gerando a análise... pode levar até 2 minutos.'
+    : 'Buscando a transcrição e gerando a análise... pode levar até 2 minutos.');
+
+  try {
+    const resp = await fetch('/api/analisar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, variacao: variacao || undefined, transcricao: transcricao || undefined }),
+    });
+
+    let data;
+    try {
+      data = await resp.json();
+    } catch (parseErr) {
+      mostrarStatus('erro', 'Resposta inesperada do servidor (status ' + resp.status + '). Tente novamente.');
+      return;
+    }
+
+    if (!resp.ok) {
+      if (data.precisaColar) {
+        mostrarStatus('aviso', data.erro || 'Não consegui buscar a transcrição.', data.detalhe);
+        abrirColar();
+        return;
+      }
+      mostrarStatus('erro', data.erro || 'Erro desconhecido', data.detalhe);
+      if (data.transcricao) {
+        atual = { md: '## Transcrição (sem análise)\n\n' + data.transcricao };
+        renderizar();
+      }
+      return;
+    }
+
+    esconderStatus();
+    atual = { relatorio: data.relatorio, meta: data.meta, url: data.url || url, checagem: null, data: new Date().toLocaleDateString('pt-BR') };
+    renderizar();
+    salvarNoHistorico();
+    checar();
+  } catch (err) {
+    mostrarStatus('erro', 'Erro de conexão: ' + err.message);
+  } finally {
+    botoes.forEach(b => b.disabled = false);
+  }
+}
+
+async function checar() {
+  const alvo = atual;
+  if (!alvo || !alvo.relatorio || !(alvo.relatorio.afirmacoes_para_checar || []).length) return;
+  alvo.checagem = null;
+  atualizarChecagemNaTela();
+  try {
+    const resp = await fetch('/api/checar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ afirmacoes: alvo.relatorio.afirmacoes_para_checar, contexto: alvo.relatorio.ficha }),
+    });
+    const data = await resp.json().catch(() => ({ erro: 'Resposta inesperada do servidor (status ' + resp.status + ').' }));
+    alvo.checagem = resp.ok ? data : { erro: data.erro || 'A checagem falhou.', detalhe: data.detalhe };
+  } catch (err) {
+    alvo.checagem = { erro: 'Erro de conexão na checagem: ' + err.message };
+  }
+  if (atual === alvo) atualizarChecagemNaTela();
+  if (!alvo.checagem.erro) salvarNoHistorico(alvo);
+}
+
+/* ---------- Copiar ---------- */
+
+function textoDoRelatorio() {
+  if (atual.md) return atual.md;
+  const r = atual.relatorio;
+  const l = [];
+  l.push('# ' + (r.ficha.titulo || 'Relatório'), '');
+  l.push('## Resumo executivo', ...r.resumo_executivo.map(x => '- ' + x), '');
+  l.push('## Tese central', r.tese_central, '');
+  l.push('## Pontos principais', ...r.pontos_principais.map((x, i) => `${i + 1}. ${x}`), '');
+  if (r.dados.length) l.push('## Dados e números', ...r.dados.map(d => `- ${d.dado} (fonte: ${d.fonte_citada})`), '');
+  l.push('## O que checar antes de usar');
+  if (atual.checagem && atual.checagem.itens) {
+    atual.checagem.itens.forEach(i => {
+      l.push(`- [${STATUS[i.status].rotulo}] ${i.afirmacao}`);
+      if (i.explicacao) l.push('  ' + i.explicacao);
+      i.fontes.forEach(f => l.push('  Fonte: ' + f.titulo + ' ' + f.url));
+      if (i.orientacao) l.push('  ' + i.orientacao);
+    });
+  } else {
+    r.afirmacoes_para_checar.forEach(a => l.push('- (não checada) ' + a.afirmacao));
+  }
+  l.push('', '## Onde usar na assessoria', ...[...r.areas].sort((a, b) => b.relevancia - a.relevancia).map(a => `- ${a.area} (${a.relevancia}/5): ${a.como_usar}`), '');
+  l.push('## Mensagens para enviar');
+  mensagensDe(r).forEach(msg => l.push('### ' + (ROTULO_DESTINATARIO[msg.destinatario] || msg.destinatario), msg.texto, ''));
+  if (temSpin(r)) {
+    l.push('## Perguntas SPIN para a conversa');
+    ETAPAS_SPIN.forEach(([k, nome]) => (r.perguntas_spin[k] || []).length && l.push('### ' + nome, ...r.perguntas_spin[k].map(q => '- ' + q)));
+    l.push('');
+  }
+  if (r.ganchos.length) l.push('## Ganchos de conteúdo', ...r.ganchos.map(x => '- ' + x), '');
+  if (r.frases_citaveis.length) l.push('## Frases citáveis', ...r.frases_citaveis.map(f => '> ' + f.texto), '');
+  if (r.variacao) l.push('## ' + r.variacao.titulo, ...r.variacao.itens.map(x => '- ' + x), '');
+  return l.join('\n');
+}
+
+function copiarPara(btn, texto, rotulo) {
+  navigator.clipboard.writeText(texto).then(() => {
+    btn.textContent = 'Copiado!';
+    btn.classList.add('feito');
+    setTimeout(() => { btn.textContent = rotulo; btn.classList.remove('feito'); }, 2000);
+  }).catch(() => { btn.textContent = 'Não foi possível copiar'; });
+}
+
+function copiar() { copiarPara(document.getElementById('btnCopiar'), textoDoRelatorio(), 'Copiar texto'); }
+function copiarMensagem(i) { copiarPara(document.getElementById('btnCopiarMsg-' + i), mensagensDe(atual.relatorio)[i].texto, 'Copiar mensagem'); }
+
+/* ---------- PDF ---------- */
+
+function nomeArquivo(sufixo) {
+  const base = (atual.relatorio.ficha.titulo || 'relatorio')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'relatorio';
+  return `${base}-${sufixo}.pdf`;
+}
+
+function tituloVideo() {
+  const r = atual.relatorio, m = atual.meta || {};
+  return r.ficha.titulo && r.ficha.titulo !== 'não informado' ? r.ficha.titulo : (m.titulo || 'Vídeo analisado');
+}
+
+function linhaFicha() {
+  const r = atual.relatorio, m = atual.meta || {};
+  const canal = r.ficha.canal !== 'não informado' ? r.ficha.canal : m.canal;
+  return [canal, m.duracao || (r.ficha.duracao !== 'não informado' ? r.ficha.duracao : ''), 'Gerado em ' + (atual.data || new Date().toLocaleDateString('pt-BR'))].filter(Boolean).join(' · ');
+}
+
+// Blocos do relatório: cada um vai inteiro para uma página
+function blocosRelatorio() {
+  const r = atual.relatorio;
+  const b = [];
+  const secao = (titulo, itens) => itens.forEach((html, i) => b.push((i === 0 ? `<h2>${esc(titulo)}</h2>` : '') + html));
+
+  b.push(`<div class="sub">Insights YouTube · Braúna</div><h1>${esc(tituloVideo())}</h1><div class="sub">${esc(linhaFicha())}</div>${atual.url ? `<div class="sub">${esc(atual.url)}</div>` : ''}`);
+  b.push(`<h2>Resumo executivo</h2><div class="caixa"><ul>${r.resumo_executivo.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`);
+  b.push(`<h2>Tese central</h2><p><b>${esc(r.tese_central)}</b></p><p class="sub">Tema: ${esc(r.ficha.tema)} · Público: ${esc(r.ficha.publico)}</p>`);
+  b.push(`<h2>Pontos principais</h2><ol>${r.pontos_principais.map(x => `<li>${esc(x)}</li>`).join('')}</ol>`);
+
+  const graficos = specsDoRelatorio(r).map(s =>
+    `<p><b>${esc(s.titulo)}</b></p><img class="grafico-img" width="674" height="300" src="${graficoComoImagem(s, 674, 300)}"><p class="sub">${s.unidade ? 'Unidade: ' + esc(s.unidade) + '. ' : ''}Fonte citada no vídeo: ${esc(s.fonte || 'sem fonte')}</p>`);
+  const tabela = r.dados.length
+    ? [`<table><thead><tr><th>Dado citado</th><th>Fonte que o autor deu</th></tr></thead><tbody>${r.dados.map(d => `<tr><td>${esc(d.dado)}</td><td>${esc(d.fonte_citada)}</td></tr>`).join('')}</tbody></table>`]
+    : ['<p class="sub">O vídeo não citou números.</p>'];
+  secao('Dados e números do vídeo', [...graficos, ...tabela]);
+
+  const ch = atual.checagem;
+  if (ch && ch.itens) {
+    const cont = contagemChecagem(ch.itens);
+    const resumo = `<p>${ORDEM_STATUS.filter(s => cont[s]).map(s => `${STATUS[s].icone} ${cont[s]} ${STATUS[s].rotulo.toLowerCase()}`).join(' · ')}</p>`;
+    secao('O que checar antes de usar', [resumo, ...ch.itens.map(i => {
+      const st = STATUS[i.status];
+      return `<div class="pdf-check" style="--cor:${st.corPdf}"><div class="rot">${st.icone} ${st.rotulo.toUpperCase()}</div>
+        <p><b>${esc(i.afirmacao)}</b></p>${i.explicacao ? `<p>${esc(i.explicacao)}</p>` : ''}
+        ${i.fontes.map(f => `<div class="fonte">${esc(f.titulo)}: ${esc(f.url)}</div>`).join('')}
+        ${i.orientacao ? `<p><i>${esc(i.orientacao)}</i></p>` : ''}</div>`;
+    })]);
+  } else {
+    secao('O que checar antes de usar', [
+      `<p class="sub">A checagem na internet ${ch && ch.erro ? 'falhou' : 'ainda não terminou'} quando este PDF foi gerado. Confirme antes de usar:</p><ul>${r.afirmacoes_para_checar.map(a => `<li>${esc(a.afirmacao)}</li>`).join('')}</ul>`]);
+  }
+
+  const areas = [...r.areas].sort((a, b) => b.relevancia - a.relevancia);
+  secao('Onde usar na assessoria', [
+    `<img class="grafico-img" width="674" height="300" src="${graficoComoImagem(specAreas(r), 674, 300)}">`,
+    `<ul>${areas.filter(a => a.relevancia >= 3).map(a => `<li><b>${esc(a.area)} (${a.relevancia}/5):</b> ${esc(a.como_usar)}</li>`).join('') || '<li>Nenhuma área com relevância alta.</li>'}</ul>`,
+  ]);
+  secao('Mensagens para enviar', mensagensDe(r).map(msg =>
+    `<p><b>${esc(ROTULO_DESTINATARIO[msg.destinatario] || msg.destinatario)}</b>${msg.objetivo ? ` <span class="sub">· ${esc(msg.objetivo)}</span>` : ''}</p><div class="msg">${esc(msg.texto)}</div><p class="sub">Troque o [nome] e ajuste com o seu jeito antes de enviar.</p>`));
+  if (temSpin(r)) {
+    secao('Perguntas SPIN para a conversa', ETAPAS_SPIN.filter(([k]) => (r.perguntas_spin[k] || []).length)
+      .map(([k, nome]) => `<p><b>${nome}</b></p><ul>${r.perguntas_spin[k].map(q => `<li>${esc(q)}</li>`).join('')}</ul>`));
+  }
+  if (r.ganchos.length) b.push(`<h2>Ganchos de conteúdo</h2><ul>${r.ganchos.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
+  if (r.frases_citaveis.length) b.push(`<h2>Frases citáveis</h2>${r.frases_citaveis.map(f => `<p><i>“${esc(f.texto)}”</i></p>`).join('')}`);
+  if (r.variacao) b.push(`<h2>${esc(r.variacao.titulo)}</h2><ul>${r.variacao.itens.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
+  return b;
+}
+
+async function paginar(blocos, area) {
+  const paginas = [];
+  let corpo = null;
+  const novaPagina = () => {
+    const p = document.createElement('div');
+    p.className = 'pdf-pagina';
+    p.innerHTML = '<div class="corpo"></div><div class="rodape"><span>Insights YouTube · Braúna</span><span class="pg"></span></div>';
+    area.appendChild(p);
+    paginas.push(p);
+    corpo = p.querySelector('.corpo');
+  };
+  novaPagina();
+  for (const html of blocos) {
+    const el = document.createElement('div');
+    el.innerHTML = html;
+    corpo.appendChild(el);
+    await Promise.all([...el.querySelectorAll('img')].map(img => img.decode().catch(() => null)));
+    if (corpo.scrollHeight > corpo.clientHeight && corpo.children.length > 1) {
+      corpo.removeChild(el);
+      novaPagina();
+      corpo.appendChild(el);
+    }
+  }
+  paginas.forEach((p, i) => p.querySelector('.pg').textContent = `Página ${i + 1} de ${paginas.length}`);
+  return paginas;
+}
+
+async function esperarImagens(area) {
+  await Promise.all([...area.querySelectorAll('img')].map(img => img.complete ? null : new Promise(r => { img.onload = img.onerror = r; })));
+}
+
+async function capturarParaPdf(elementos, pdf, largura, altura) {
+  for (let i = 0; i < elementos.length; i++) {
+    const canvas = await html2canvas(elementos[i], { scale: 2, backgroundColor: '#ffffff', logging: false });
+    if (i > 0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, largura, altura);
+  }
+}
+
+async function gerarPdf(btn, rotulo, montar) {
+  if (!window.html2canvas || !window.jspdf || !window.Chart) {
+    mostrarStatus('erro', 'Não consegui carregar as ferramentas de PDF.', 'Confira a internet e recarregue a página.');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Gerando PDF...';
+  const area = document.getElementById('pdf-area');
+  area.innerHTML = '';
+  try {
+    await montar(area);
+  } catch (e) {
+    mostrarStatus('erro', 'Não consegui gerar o PDF.', e.message);
+  } finally {
+    area.innerHTML = '';
+    btn.disabled = false;
+    btn.textContent = rotulo;
+  }
+}
+
+function baixarRelatorio() {
+  gerarPdf(document.getElementById('btnPdfRelatorio'), 'Baixar relatório (PDF)', async area => {
+    const paginas = await paginar(blocosRelatorio(), area);
+    await esperarImagens(area);
+    const pdf = new jspdf.jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
+    await capturarParaPdf(paginas, pdf, 595.28, 841.89);
+    pdf.save(nomeArquivo('relatorio'));
+  });
+}
+
+function slidesApresentacao() {
+  const r = atual.relatorio;
+  const s = [];
+  s.push(`<div class="pdf-slide capa"><div class="rotulo">Insights YouTube · Braúna</div><h1>${esc(tituloVideo())}</h1><p>${esc(linhaFicha())}</p></div>`);
+  s.push(`<div class="rotulo">Resumo executivo</div><h2>O que importa neste vídeo</h2><ul>${r.resumo_executivo.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
+  s.push(`<div class="rotulo">Tese central</div><p class="citacao">${esc(r.tese_central)}</p><p style="margin-top:32px;font-size:22px;color:#5b6475">Público: ${esc(r.ficha.publico)}</p>`);
+  s.push(`<div class="rotulo">Pontos principais</div><h2>Os argumentos, do mais forte ao mais fraco</h2><ol>${r.pontos_principais.slice(0, 6).map(x => `<li style="font-size:24px">${esc(x)}</li>`).join('')}</ol>`);
+  specsDoRelatorio(r).forEach(g => {
+    s.push(`<div class="rotulo">Números do vídeo</div><h2>${esc(g.titulo)}</h2><img src="${graficoComoImagem(g, 1120, 440, 1.5)}"><p style="font-size:15px;color:#5b6475;margin-top:8px">${g.unidade ? 'Unidade: ' + esc(g.unidade) + '. ' : ''}Fonte citada no vídeo: ${esc(g.fonte || 'sem fonte')}</p>`);
+  });
+  const ch = atual.checagem;
+  if (ch && ch.itens && ch.itens.length) {
+    const cont = contagemChecagem(ch.itens);
+    const spec = { titulo: 'Checagem', tipo: 'barra', horizontal: true, inteiro: true, unidade: 'afirmações',
+      rotulos: ORDEM_STATUS.map(x => STATUS[x].curto), valores: ORDEM_STATUS.map(x => cont[x]),
+      cores: ORDEM_STATUS.map(x => STATUS[x].corPdf) };
+    const lista = ch.itens.slice(0, 4).map(i => {
+      const st = STATUS[i.status];
+      return `<div class="item-check" style="--cor:${st.corPdf}"><b>${st.icone} ${st.rotulo}</b><p>${esc(i.afirmacao)}</p></div>`;
+    }).join('');
+    s.push(`<div class="rotulo">O que checar antes de usar</div><h2>Checagem na internet</h2><div class="duas"><div>${lista}</div><div><img src="${graficoComoImagem(spec, 480, 300, 1.3)}"><p style="font-size:15px;color:#5b6475">Afirmações sem confirmação: o líder deve buscar a informação antes de usar com clientes.</p></div></div>`);
+  }
+  const areas = [...r.areas].sort((a, b) => b.relevancia - a.relevancia);
+  s.push(`<div class="rotulo">Onde usar na assessoria</div><h2>As áreas que mais aproveitam</h2><div class="duas"><img src="${graficoComoImagem(specAreas(r), 560, 420, 1.2)}"><ul>${areas.slice(0, 3).map(a => `<li style="font-size:22px"><b>${esc(a.area)}:</b> ${esc(a.como_usar)}</li>`).join('')}</ul></div>`);
+  mensagensDe(r).forEach(msg => {
+    s.push(`<div class="rotulo">Mensagem · ${esc(ROTULO_DESTINATARIO[msg.destinatario] || msg.destinatario)}</div><h2>Para mandar no WhatsApp</h2><div class="msg">${esc(msg.texto)}</div>${msg.objetivo ? `<p style="margin-top:20px;font-size:20px;color:#5b6475">Objetivo: ${esc(msg.objetivo)}</p>` : ''}`);
+  });
+  if (temSpin(r)) {
+    const blocos = ETAPAS_SPIN.filter(([k]) => (r.perguntas_spin[k] || []).length)
+      .map(([k, nome]) => `<div><p style="font-size:22px;font-weight:700;color:#2a5bd7;margin-bottom:6px">${nome}</p><ul>${r.perguntas_spin[k].slice(0, 2).map(q => `<li style="font-size:23px;margin-bottom:10px">${esc(q)}</li>`).join('')}</ul></div>`).join('');
+    s.push(`<div class="rotulo">Perguntas SPIN</div><h2>Para conduzir a conversa</h2><div style="display:grid;grid-template-columns:1fr 1fr;gap:18px 40px">${blocos}</div>`);
+  }
+  if (r.ganchos.length) s.push(`<div class="rotulo">Ganchos de conteúdo</div><h2>Ideias para post e palestra</h2><ul>${r.ganchos.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`);
+  return s;
+}
+
+function baixarApresentacao() {
+  gerarPdf(document.getElementById('btnPdfApresentacao'), 'Baixar apresentação (PDF)', async area => {
+    const htmls = slidesApresentacao();
+    const slides = htmls.map((html, i) => {
+      const el = document.createElement('div');
+      if (html.startsWith('<div class="pdf-slide capa">')) {
+        el.innerHTML = html;
+        area.appendChild(el.firstChild);
+        return area.lastChild;
+      }
+      el.className = 'pdf-slide';
+      el.innerHTML = `<div class="faixa"></div>${html}<div class="marca">Insights YouTube · Braúna</div><div class="num">${i + 1}/${htmls.length}</div>`;
+      area.appendChild(el);
+      return el;
+    });
+    await esperarImagens(area);
+    const pdf = new jspdf.jsPDF({ unit: 'pt', format: [960, 540], orientation: 'landscape' });
+    await capturarParaPdf(slides, pdf, 960, 540);
+    pdf.save(nomeArquivo('apresentacao'));
+  });
+}
+
+/* ---------- Histórico ---------- */
+
+function salvarNoHistorico(item) {
+  const alvo = item || atual;
+  if (!alvo || !alvo.relatorio) return;
+  const registro = {
+    titulo: (alvo.relatorio.ficha.titulo !== 'não informado' && alvo.relatorio.ficha.titulo) || (alvo.meta && alvo.meta.titulo) || alvo.url || 'Transcrição colada',
+    url: alvo.url, data: alvo.data, relatorio: alvo.relatorio, meta: alvo.meta, checagem: alvo.checagem && !alvo.checagem.erro ? alvo.checagem : null,
+  };
+  const i = historico.findIndex(h => h.relatorio === alvo.relatorio || (h.relatorio && JSON.stringify(h.relatorio) === JSON.stringify(alvo.relatorio)));
+  if (i >= 0) historico[i] = registro; else historico.unshift(registro);
+  if (historico.length > 20) historico.pop();
+  try { localStorage.setItem('yt-historico', JSON.stringify(historico)); } catch(e) {}
+  renderizarHistorico();
+}
+
+function renderizarHistorico() {
+  if (!historico.length) return;
+  const el = document.getElementById('historico');
+  el.innerHTML = '<h3>Análises recentes</h3>' +
+    historico.map((h, i) =>
+      `<div class="historico-item" onclick="carregarHistorico(${i})">
+        <span class="titulo">${esc(h.titulo)}</span>
+        <span class="data">${esc(h.data)}</span>
+      </div>`
+    ).join('');
+}
+
+function carregarHistorico(i) {
+  const h = historico[i];
+  atual = h.relatorio
+    ? { relatorio: h.relatorio, meta: h.meta, url: h.url, data: h.data, checagem: h.checagem || null }
+    : { md: h.md };
+  renderizar();
+  document.getElementById('urlInput').value = h.url || '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (atual.relatorio && !atual.checagem) checar();
+}
+
+// Enter para analisar
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analisar();
+});
+
+renderizarHistorico();
+</script>
+</body>
+</html>
