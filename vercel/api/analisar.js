@@ -147,6 +147,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       supadata: Boolean(process.env.SUPADATA_API_KEY),
       anthropic: Boolean(process.env.ANTHROPIC_API_KEY),
+      workspace: Boolean(process.env.ANTHROPIC_WORKSPACE_ID),
     });
   }
   if (req.method !== "POST") {
@@ -208,7 +209,11 @@ export default async function handler(req, res) {
   ].join("\n");
 
   try {
-    const client = new Anthropic();
+    // Chaves que não pertencem a um workspace exigem o id do workspace em cada pedido
+    const workspace = process.env.ANTHROPIC_WORKSPACE_ID;
+    const client = new Anthropic(
+      workspace ? { defaultHeaders: { "anthropic-workspace-id": workspace } } : {}
+    );
     const resposta = await client.beta.messages.create({
       model: "claude-opus-5",
       max_tokens: 16000,
